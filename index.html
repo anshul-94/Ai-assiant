@@ -1,0 +1,2082 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QReels – Kids Learning Assistant</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap"
+        rel="stylesheet" />
+
+    <style>
+        /* ===========================================================
+     1. CSS VARIABLES & RESET
+  =========================================================== */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            /* Qreels Kids Palette */
+            --c-bg:         #0b0d1a;
+            --c-surface:    #111427;
+            --c-sidebar:    #0d0f1e;
+            --c-input-bg:   #161929;
+            --c-bot-bubble: #241850;      /* soft purple – AI bubbles */
+            --c-bot-border: #3d2d80;
+            --c-hover:      #1a1e38;
+            --c-border:     #1e2240;
+
+            /* Accent */
+            --accent:       #7c6df0;
+            --accent-2:     #5b4fcf;
+            --accent-dim:   rgba(124, 109, 240, .15);
+            --accent-glow:  rgba(124, 109, 240, .4);
+            --user-grad:    linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+
+            /* Call colours */
+            --call-green: #22c55e;
+            --call-red:   #ef4444;
+            --call-glow-g: rgba(34, 197, 94, .5);
+            --call-glow-r: rgba(239, 68, 68, .5);
+
+            /* Text */
+            --t1: #eef0fa;
+            --t2: #8892b0;
+            --t3: #4a5278;
+
+            /* Geometry */
+            --sidebar-w: 260px;
+            --radius:    18px;
+            --ease:      .2s ease;
+        }
+
+        html,
+        body {
+            height: 100%;
+            font-family: 'Inter', system-ui, sans-serif;
+            background: var(--c-bg);
+            color: var(--t1);
+            overflow: hidden;
+        }
+
+        button {
+            cursor: pointer;
+            border: none;
+            background: none;
+            color: inherit;
+            font-family: inherit;
+        }
+
+        textarea,
+        input {
+            outline: none;
+            font-family: inherit;
+        }
+
+        svg {
+            display: block;
+            flex-shrink: 0;
+        }
+
+        /* ===========================================================
+     2. LAYOUT
+  =========================================================== */
+        #app {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ===========================================================
+     3. SIDEBAR
+  =========================================================== */
+        #sidebar {
+            width: var(--sidebar-w);
+            background: var(--c-sidebar);
+            border-right: 1px solid var(--c-border);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            transition: transform var(--ease);
+            z-index: 100;
+        }
+
+        .sb-header {
+            padding: 20px 16px 14px;
+            border-bottom: 1px solid var(--c-border);
+        }
+
+        /* Logo */
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            font-family: 'Nunito', sans-serif;
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: -.3px;
+            color: var(--t1);
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 11px;
+            background: var(--user-grad);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 18px var(--accent-glow);
+            flex-shrink: 0;
+        }
+
+        .logo-emoji {
+            font-size: 17px;
+        }
+
+        /* New chat button */
+        .new-btn {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            margin: 14px 10px 6px;
+            padding: 10px 14px;
+            border-radius: 12px;
+            border: 1px solid var(--c-border);
+            font-size: 13.5px;
+            font-weight: 600;
+            color: var(--t2);
+            transition: all var(--ease);
+        }
+
+        .new-btn:hover {
+            background: var(--c-hover);
+            color: var(--t1);
+            border-color: var(--accent);
+            box-shadow: 0 0 12px var(--accent-dim);
+        }
+
+        .new-btn svg {
+            stroke: currentColor;
+        }
+
+        /* Section label */
+        .sb-label {
+            padding: 10px 18px 4px;
+            font-size: 10.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--t3);
+        }
+
+        /* History list */
+        #chat-history {
+            flex: 1;
+            overflow-y: auto;
+            padding: 4px 8px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--c-border) transparent;
+        }
+
+        #chat-history::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        #chat-history::-webkit-scrollbar-thumb {
+            background: var(--c-border);
+            border-radius: 4px;
+        }
+
+        .hist-item {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            padding: 9px 11px;
+            border-radius: 10px;
+            font-size: 13px;
+            color: var(--t2);
+            cursor: pointer;
+            transition: all var(--ease);
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        .hist-item:hover,
+        .hist-item.active {
+            background: var(--c-hover);
+            color: var(--t1);
+        }
+
+        .hist-title {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex: 1;
+        }
+
+        /* Sidebar footer */
+        .sb-footer {
+            padding: 13px 10px;
+            border-top: 1px solid var(--c-border);
+        }
+
+        .user-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 11px;
+            border-radius: 11px;
+            cursor: pointer;
+            transition: background var(--ease);
+        }
+
+        .user-row:hover {
+            background: var(--c-hover);
+        }
+
+        .u-avatar {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #f59e0b, #ef4444);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Nunito', sans-serif;
+            font-size: 14px;
+            font-weight: 800;
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        .u-name {
+            font-size: 13.5px;
+            font-weight: 600;
+            color: var(--t1);
+        }
+
+        .u-plan {
+            font-size: 11px;
+            color: var(--t3);
+        }
+
+        /* ===========================================================
+     4. MAIN AREA
+  =========================================================== */
+        #main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Mobile topbar */
+        #topbar {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            padding: 13px 16px;
+            border-bottom: 1px solid var(--c-border);
+            background: var(--c-surface);
+        }
+
+        .icon-btn {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background var(--ease);
+        }
+
+        .icon-btn:hover {
+            background: var(--c-hover);
+        }
+
+        /* ===========================================================
+     5. WELCOME SCREEN
+  =========================================================== */
+        #welcome {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 22px;
+            padding: 40px 24px;
+            overflow-y: auto;
+        }
+
+        .w-emoji {
+            font-size: 52px;
+            animation: wFloat 3s ease-in-out infinite;
+        }
+
+        @keyframes wFloat {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-8px);
+            }
+        }
+
+        .w-title {
+            font-family: 'Nunito', sans-serif;
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -.5px;
+            text-align: center;
+            background: linear-gradient(135deg, #6c63ff, #a78bfa, #60a5fa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .w-sub {
+            font-size: 14.5px;
+            color: var(--t2);
+            text-align: center;
+            max-width: 400px;
+            line-height: 1.7;
+        }
+
+        /* Suggestion cards */
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            width: 100%;
+            max-width: 560px;
+        }
+
+        .card {
+            background: var(--c-surface);
+            border: 1px solid var(--c-border);
+            border-radius: 14px;
+            padding: 15px 16px;
+            cursor: pointer;
+            transition: all var(--ease);
+            text-align: left;
+        }
+
+        .card:hover {
+            border-color: var(--accent);
+            background: var(--c-hover);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px var(--accent-dim);
+        }
+
+        .card .c-icon {
+            font-size: 22px;
+            margin-bottom: 6px;
+        }
+
+        .card .c-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--t1);
+            line-height: 1.4;
+        }
+
+        .card .c-sub {
+            font-size: 11.5px;
+            color: var(--t3);
+            margin-top: 2px;
+        }
+
+        /* ===========================================================
+     6. MESSAGES AREA  (Fixed alignment & wrapping)
+  =========================================================== */
+        #msgs-wrap {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px 0 12px;
+            scroll-behavior: smooth;
+            scrollbar-width: thin;
+            scrollbar-color: var(--c-border) transparent;
+        }
+
+        #msgs-wrap::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        #msgs-wrap::-webkit-scrollbar-thumb {
+            background: var(--c-border);
+            border-radius: 4px;
+        }
+
+        #msgs {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        /* ── Message row ──────────────────────────── */
+        .msg-row {
+            display: flex;
+            align-items: flex-end;
+            /* avatars align to bottom of bubble */
+            gap: 10px;
+            animation: msgIn .28s ease both;
+        }
+
+        /* User messages → right-aligned */
+        .msg-row.user {
+            flex-direction: row-reverse;
+        }
+
+        @keyframes msgIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ── Avatar ───────────────────────────────── */
+        .msg-av {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Nunito', sans-serif;
+            font-size: 11px;
+            font-weight: 800;
+            flex-shrink: 0;
+            /* no top margin needed — we use align-items: flex-end on parent */
+        }
+
+        .msg-av.bot {
+            background: var(--user-grad);
+            color: #fff;
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        .msg-av.user {
+            background: linear-gradient(135deg, #f59e0b, #ef4444);
+            color: #fff;
+        }
+
+        /* ── Bubble wrapper (holds bubble + timestamp) ── */
+        .msg-body {
+            display: flex;
+            flex-direction: column;
+            /* Critical: constrain width correctly */
+            max-width: 60%;
+            min-width: 0;
+            /* prevent flex overflow */
+        }
+
+        .msg-row.user .msg-body {
+            align-items: flex-end;
+        }
+
+        .msg-row.bot .msg-body {
+            align-items: flex-start;
+        }
+
+        /* ── Bubble ───────────────────────────────── */
+        .bubble {
+            padding: 12px 16px;
+            border-radius: var(--radius);
+            font-size: 14.5px;
+            line-height: 1.68;
+            word-break: break-word;
+            /* force long words to wrap */
+            overflow-wrap: break-word;
+            /* NOTE: do NOT use white-space:pre-wrap here — it breaks prose wrapping.
+       Newlines from the API are handled by md2html (\n → <br>). */
+        }
+
+        /* Bot bubble — soft purple (Qreels kids style) */
+        .msg-row.bot .bubble {
+            background: var(--c-bot-bubble);
+            border: 1px solid var(--c-bot-border);
+            border-bottom-left-radius: 5px;
+            color: #ddd3ff;
+            box-shadow: 0 2px 12px rgba(60, 30, 120, .4);
+        }
+
+        /* User bubble — blue gradient */
+        .msg-row.user .bubble {
+            background: var(--user-grad);
+            border-bottom-right-radius: 5px;
+            color: #fff;
+            box-shadow: 0 2px 12px rgba(29, 78, 216, .4);
+        }
+
+        /* AI avatar matches new accent */
+        .msg-av.bot {
+            background: linear-gradient(135deg, #7c6df0, #a78bfa);
+            color: #fff;
+            box-shadow: 0 0 10px rgba(124, 109, 240, .4);
+        }
+
+        .msg-av.user {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: #fff;
+        }
+
+        /* Voice-call tagged bubble subtle ring */
+        .msg-row.voice-turn.bot .bubble  { box-shadow: 0 0 0 2px rgba(34, 197, 94, .35); }
+        .msg-row.voice-turn.user .bubble { box-shadow: 0 0 0 2px rgba(34, 197, 94, .35); }
+
+        /* ── Learning strip ──────────────────────────────── */
+        #learn-strip {
+            display: flex; align-items: center; gap: 8px;
+            padding: 10px 20px; overflow-x: auto; scrollbar-width: none;
+            border-bottom: 1px solid var(--c-border); flex-shrink: 0;
+            background: linear-gradient(180deg, var(--c-surface), var(--c-bg));
+        }
+        #learn-strip::-webkit-scrollbar { display: none; }
+
+        .ltag {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 6px 14px; border-radius: 20px;
+            border: 1.5px solid var(--c-border);
+            font-size: 12.5px; font-weight: 700;
+            white-space: nowrap; cursor: pointer;
+            transition: all .2s ease; flex-shrink: 0;
+            font-family: 'Nunito', sans-serif;
+            color: var(--t2); background: var(--c-surface);
+        }
+        .ltag:hover, .ltag.active {
+            color: #fff; transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,0,0,.4);
+        }
+        .ltag[data-color="purple"]:hover,.ltag[data-color="purple"].active
+            { background: linear-gradient(135deg,#7c6df0,#5b4fcf); border-color:#7c6df0; }
+        .ltag[data-color="blue"]:hover,.ltag[data-color="blue"].active
+            { background: linear-gradient(135deg,#3b82f6,#2563eb); border-color:#3b82f6; }
+        .ltag[data-color="rose"]:hover,.ltag[data-color="rose"].active
+            { background: linear-gradient(135deg,#f43f5e,#e11d48); border-color:#f43f5e; }
+        .ltag[data-color="amber"]:hover,.ltag[data-color="amber"].active
+            { background: linear-gradient(135deg,#f59e0b,#d97706); border-color:#f59e0b; }
+        .ltag[data-color="green"]:hover,.ltag[data-color="green"].active
+            { background: linear-gradient(135deg,#22c55e,#16a34a); border-color:#22c55e; }
+        .ltag[data-color="cyan"]:hover,.ltag[data-color="cyan"].active
+            { background: linear-gradient(135deg,#06b6d4,#0891b2); border-color:#06b6d4; }
+        .ltag[data-color="pink"]:hover,.ltag[data-color="pink"].active
+            { background: linear-gradient(135deg,#ec4899,#db2777); border-color:#ec4899; }
+        .ltag[data-color="indigo"]:hover,.ltag[data-color="indigo"].active
+            { background: linear-gradient(135deg,#6366f1,#4f46e5); border-color:#6366f1; }
+
+        /* ── Timestamp ────────────────────────────── */
+        .msg-time {
+            font-size: 10.5px;
+            color: var(--t3);
+            margin-top: 4px;
+            padding: 0 2px;
+            flex-shrink: 0;
+        }
+
+        /* ── Typing indicator ─────────────────────── */
+        #typing {
+            display: none;
+            align-items: flex-end;
+            gap: 10px;
+            animation: msgIn .28s ease both;
+        }
+
+        .typing-bub {
+            background: var(--c-bot-bubble);
+            border: 1px solid var(--c-border);
+            border-radius: var(--radius);
+            border-bottom-left-radius: 5px;
+            padding: 13px 18px;
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--t3);
+            animation: boing 1.2s ease-in-out infinite;
+        }
+
+        .dot:nth-child(2) {
+            animation-delay: .18s;
+        }
+
+        .dot:nth-child(3) {
+            animation-delay: .36s;
+        }
+
+        @keyframes boing {
+
+            0%,
+            60%,
+            100% {
+                transform: none;
+                background: var(--t3);
+            }
+
+            30% {
+                transform: translateY(-7px);
+                background: var(--accent);
+            }
+        }
+
+        /* ── Markdown inside bot bubbles ─────────────── */
+        .bubble code {
+            background: rgba(0, 0, 0, .3);
+            padding: 2px 6px;
+            border-radius: 5px;
+            font-size: .88em;
+            font-family: 'Fira Code', monospace;
+        }
+
+        .bubble pre {
+            background: #0d1117;
+            border: 1px solid var(--c-border);
+            border-radius: 10px;
+            padding: 12px;
+            overflow-x: auto;
+            font-size: 13px;
+            line-height: 1.5;
+            margin: 8px 0;
+        }
+
+        .bubble pre code {
+            background: none;
+            padding: 0;
+            font-size: inherit;
+        }
+
+        .bubble strong {
+            font-weight: 700;
+        }
+
+        .bubble em {
+            font-style: italic;
+        }
+
+        /* ===========================================================
+     7. INPUT AREA
+  =========================================================== */
+        #input-area {
+            padding: 14px 20px 18px;
+            border-top: 1px solid var(--c-border);
+            background: var(--c-bg);
+        }
+
+        .input-shell {
+            max-width: 800px;
+            margin: 0 auto;
+            background: var(--c-input-bg);
+            border: 1px solid var(--c-border);
+            border-radius: 15px;
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+            padding: 10px 12px;
+            transition: border-color var(--ease), box-shadow var(--ease);
+        }
+
+        .input-shell:focus-within {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-dim);
+        }
+
+        #user-input {
+            flex: 1;
+            background: none;
+            border: none;
+            resize: none;
+            color: var(--t1);
+            font-size: 14.5px;
+            line-height: 1.6;
+            max-height: 160px;
+            min-height: 24px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+        }
+
+        #user-input::placeholder {
+            color: var(--t3);
+        }
+
+        .act-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--t2);
+            transition: all var(--ease);
+            flex-shrink: 0;
+        }
+
+        .act-btn:hover {
+            background: var(--c-hover);
+            color: var(--t1);
+        }
+
+        #mic-btn.listening {
+            background: rgba(239, 68, 68, .15) !important;
+            color: #ef4444 !important;
+            animation: micGlow 1s ease-in-out infinite;
+        }
+
+        @keyframes micGlow {
+
+            0%,
+            100% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, .3);
+            }
+
+            50% {
+                box-shadow: 0 0 0 7px rgba(239, 68, 68, 0);
+            }
+        }
+
+        #send-btn {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            opacity: .38;
+            transition: all var(--ease);
+        }
+
+        #send-btn.ready {
+            opacity: 1;
+            box-shadow: 0 4px 18px var(--accent-glow);
+        }
+
+        #send-btn.ready:hover {
+            filter: brightness(1.12);
+            transform: scale(1.07);
+        }
+
+        .input-hint {
+            max-width: 800px;
+            margin: 8px auto 0;
+            text-align: center;
+            font-size: 11.5px;
+            color: var(--t3);
+        }
+
+        /* ===========================================================
+     8. CALL MODE — FLOATING BUTTON
+  =========================================================== */
+        #call-panel {
+            position: fixed;
+            bottom: 28px;
+            right: 28px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            z-index: 300;
+        }
+
+        /* ── Floating Call Button ──────────────────── */
+        .fab {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform .28s cubic-bezier(.34, 1.56, .64, 1), box-shadow .28s ease;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .fab:active {
+            transform: scale(.93);
+        }
+
+        #start-call-btn {
+            /* Green gradient — feels rich, not flat */
+            background: linear-gradient(145deg, #2ecc71, #22c55e, #16a34a);
+            box-shadow:
+                0 6px 24px rgba(34, 197, 94, .55),
+                0 2px 6px rgba(0, 0, 0, .3),
+                inset 0 1px 0 rgba(255, 255, 255, .25);
+        }
+
+        #start-call-btn:hover {
+            transform: scale(1.1);
+            box-shadow:
+                0 10px 32px rgba(34, 197, 94, .7),
+                0 2px 8px rgba(0, 0, 0, .35),
+                inset 0 1px 0 rgba(255, 255, 255, .25);
+        }
+
+        /* Double pulsing ring around start button */
+        #start-call-btn::before,
+        #start-call-btn::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            border: 2px solid rgba(34, 197, 94, .55);
+            animation: callRing 2.4s ease-out infinite;
+        }
+
+        #start-call-btn::after {
+            animation-delay: 1.2s;
+        }
+
+        @keyframes callRing {
+            0% {
+                transform: scale(1);
+                opacity: .9;
+            }
+
+            100% {
+                transform: scale(1.8);
+                opacity: 0;
+            }
+        }
+
+        #start-call-btn.hidden {
+            display: none;
+        }
+
+        .call-label {
+            font-size: 11.5px;
+            font-weight: 700;
+            color: var(--call-green);
+            letter-spacing: .3px;
+            text-align: center;
+            text-shadow: 0 0 10px rgba(34, 197, 94, .4);
+        }
+
+        /* ── Voice Mode Overlay (full-screen) ─────── */
+        #voice-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 500;
+            background: rgba(8, 10, 18, .97);
+            backdrop-filter: blur(18px);
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0;
+            animation: voiceIn .35s ease both;
+        }
+
+        #voice-overlay.open {
+            display: flex;
+        }
+
+        @keyframes voiceIn {
+            from {
+                opacity: 0;
+                transform: scale(.96);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* Decorative top bar colour stripe */
+        #voice-overlay::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--call-green), var(--accent), #60a5fa);
+        }
+
+        /* Mic avatar + rings */
+        .vm-mic-wrap {
+            position: relative;
+            width: 140px;
+            height: 140px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 36px;
+        }
+
+        /* Three expanding rings behind the mic */
+        .vm-ring {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            border: 2px solid rgba(34, 197, 94, .3);
+            animation: vmRing 2.4s ease-out infinite;
+        }
+
+        .vm-ring:nth-child(2) {
+            animation-delay: .8s;
+        }
+
+        .vm-ring:nth-child(3) {
+            animation-delay: 1.6s;
+        }
+
+        @keyframes vmRing {
+            0% {
+                transform: scale(1);
+                opacity: .8;
+            }
+
+            100% {
+                transform: scale(2.2);
+                opacity: 0;
+            }
+        }
+
+        /* When speaking — rings are purple */
+        #voice-overlay.speaking .vm-ring {
+            border-color: rgba(108, 99, 255, .4);
+        }
+
+        #voice-overlay.speaking .vm-ring {
+            animation-name: vmRingSpeak;
+        }
+
+        @keyframes vmRingSpeak {
+            0% {
+                transform: scale(1);
+                opacity: .9;
+            }
+
+            100% {
+                transform: scale(2.2);
+                opacity: 0;
+            }
+        }
+
+        /* Mic circle */
+        .vm-mic-circle {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #1a2a1a, #0f1f0f);
+            border: 2px solid rgba(34, 197, 94, .4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow:
+                0 0 40px rgba(34, 197, 94, .3),
+                0 8px 32px rgba(0, 0, 0, .6);
+            transition: all .4s ease;
+            position: relative;
+            z-index: 1;
+        }
+
+        #voice-overlay.speaking .vm-mic-circle {
+            background: linear-gradient(145deg, #1a1a2e, #0f0f20);
+            border-color: rgba(108, 99, 255, .5);
+            box-shadow:
+                0 0 50px rgba(108, 99, 255, .4),
+                0 8px 32px rgba(0, 0, 0, .6);
+        }
+
+        #voice-overlay.processing .vm-mic-circle {
+            border-color: rgba(245, 158, 11, .4);
+            box-shadow: 0 0 40px rgba(245, 158, 11, .3), 0 8px 32px rgba(0, 0, 0, .6);
+        }
+
+        /* Mic icon wobble when listening */
+        #voice-overlay.listening .vm-mic-circle {
+            animation: micWobble 1.5s ease-in-out infinite;
+        }
+
+        @keyframes micWobble {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.06);
+            }
+        }
+
+        /* Status label */
+        .vm-status {
+            font-family: 'Nunito', sans-serif;
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--t1);
+            letter-spacing: -.3px;
+            margin-bottom: 10px;
+        }
+
+        .vm-sub {
+            font-size: 13.5px;
+            color: var(--t2);
+            margin-bottom: 44px;
+        }
+
+        /* Big waveform — visible when AI is speaking */
+        .vm-wave {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            height: 48px;
+            margin-bottom: 40px;
+            opacity: 0;
+            transition: opacity .3s ease;
+        }
+
+        #voice-overlay.speaking .vm-wave {
+            opacity: 1;
+        }
+
+        .vm-wave span {
+            display: block;
+            width: 5px;
+            border-radius: 4px;
+            background: linear-gradient(180deg, var(--accent), #818cf8);
+            animation: vmBar 1s ease-in-out infinite;
+        }
+
+        .vm-wave span:nth-child(1) {
+            height: 12px;
+            animation-delay: 0s;
+        }
+
+        .vm-wave span:nth-child(2) {
+            height: 28px;
+            animation-delay: .1s;
+        }
+
+        .vm-wave span:nth-child(3) {
+            height: 42px;
+            animation-delay: .06s;
+        }
+
+        .vm-wave span:nth-child(4) {
+            height: 48px;
+            animation-delay: .18s;
+        }
+
+        .vm-wave span:nth-child(5) {
+            height: 36px;
+            animation-delay: .04s;
+        }
+
+        .vm-wave span:nth-child(6) {
+            height: 20px;
+            animation-delay: .14s;
+        }
+
+        .vm-wave span:nth-child(7) {
+            height: 42px;
+            animation-delay: .08s;
+        }
+
+        .vm-wave span:nth-child(8) {
+            height: 32px;
+            animation-delay: .22s;
+        }
+
+        .vm-wave span:nth-child(9) {
+            height: 18px;
+            animation-delay: .02s;
+        }
+
+        .vm-wave span:nth-child(10) {
+            height: 28px;
+            animation-delay: .16s;
+        }
+
+        .vm-wave span:nth-child(11) {
+            height: 12px;
+            animation-delay: .12s;
+        }
+
+        @keyframes vmBar {
+
+            0%,
+            100% {
+                transform: scaleY(.4);
+                opacity: .5;
+            }
+
+            50% {
+                transform: scaleY(1);
+                opacity: 1;
+            }
+        }
+
+        /* End Call button inside overlay */
+        #vm-end-btn {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #f87171, #ef4444, #dc2626);
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow:
+                0 8px 28px rgba(239, 68, 68, .55),
+                0 2px 6px rgba(0, 0, 0, .4),
+                inset 0 1px 0 rgba(255, 255, 255, .2);
+            transition: transform .25s cubic-bezier(.34, 1.56, .64, 1), box-shadow .25s ease;
+            margin-bottom: 14px;
+        }
+
+        #vm-end-btn:hover {
+            transform: scale(1.12);
+            box-shadow: 0 12px 36px rgba(239, 68, 68, .7), 0 2px 8px rgba(0, 0, 0, .4),
+                inset 0 1px 0 rgba(255, 255, 255, .2);
+        }
+
+        #vm-end-btn:active {
+            transform: scale(.92);
+        }
+
+        .vm-end-label {
+            font-size: 12px;
+            font-weight: 700;
+            color: #f87171;
+            letter-spacing: .4px;
+        }
+
+        /* Input disabled state during call */
+        #input-area.call-active {
+            opacity: .38;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        #input-area.call-active::after {
+            content: '🎤 Voice call active — type disabled';
+            display: block;
+            text-align: center;
+            font-size: 11.5px;
+            color: var(--call-green);
+            margin-top: 6px;
+            font-weight: 600;
+            letter-spacing: .2px;
+        }
+
+        /* ===========================================================
+     9. OVERLAY & TOAST
+  =========================================================== */
+        #overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .6);
+            backdrop-filter: blur(3px);
+            z-index: 90;
+        }
+
+        #overlay.open {
+            display: block;
+        }
+
+        #toast {
+            position: fixed;
+            bottom: 106px;
+            left: 50%;
+            transform: translateX(-50%) translateY(16px);
+            background: var(--c-surface);
+            border: 1px solid var(--c-border);
+            color: var(--t1);
+            font-size: 13px;
+            padding: 8px 20px;
+            border-radius: 30px;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 400;
+            transition: all .3s ease;
+            white-space: nowrap;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, .4);
+        }
+
+        #toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* ===========================================================
+     10. RESPONSIVE
+  =========================================================== */
+        @media (max-width: 720px) {
+            #topbar {
+                display: flex;
+            }
+
+            #sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                bottom: 0;
+                transform: translateX(-100%);
+                box-shadow: 6px 0 28px rgba(0, 0, 0, .6);
+            }
+
+            #sidebar.open {
+                transform: translateX(0);
+            }
+
+            /* Bubble max width increases on mobile */
+            .msg-body {
+                max-width: 85%;
+            }
+
+            .cards {
+                grid-template-columns: 1fr;
+            }
+
+            .w-title {
+                font-size: 22px;
+            }
+
+            #call-panel {
+                bottom: 16px;
+                right: 16px;
+            }
+
+            .bubble {
+                font-size: 14px;
+            }
+
+            /* Extra bottom padding so FAB doesn't cover the input bar */
+            #input-area {
+                padding-bottom: 22px;
+            }
+            .fab { width: 68px; height: 68px; }
+            #learn-strip { padding: 8px 14px; gap: 6px; }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+
+        <!-- ============ SIDEBAR ============ -->
+        <aside id="sidebar">
+            <div class="sb-header">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <span class="logo-emoji">🌟</span>
+                    </div>
+                    Qreels
+                </div>
+            </div>
+
+            <button class="new-btn" id="new-chat-btn" aria-label="New chat">
+                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
+                    viewBox="0 0 24 24">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                New Conversation
+            </button>
+
+            <div class="sb-label">Recent Chats</div>
+            <div id="chat-history"></div>
+
+            <div class="sb-footer">
+                <div class="user-row">
+                    <div class="u-avatar">S</div>
+                    <div>
+                        <div class="u-name">Student</div>
+                        <div class="u-plan">Kids Learning Free</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+        <div id="overlay"></div>
+
+        <!-- ============ MAIN ============ -->
+        <div id="main">
+
+            <!-- Mobile topbar -->
+            <div id="topbar">
+                <button class="icon-btn" id="menu-btn" aria-label="Menu">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" viewBox="0 0 24 24">
+                        <line x1="3" y1="6" x2="21" y2="6" />
+                        <line x1="3" y1="12" x2="21" y2="12" />
+                        <line x1="3" y1="18" x2="21" y2="18" />
+                    </svg>
+                </button>
+                <span style="font-family:'Nunito',sans-serif;font-size:16px;font-weight:800;">🌟 QReels</span>
+                <button class="icon-btn" id="new-mobile-btn" aria-label="New chat">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" viewBox="0 0 24 24">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Welcome screen -->
+            <div id="welcome">
+                <div class="w-emoji">🎒</div>
+                <div class="w-title">Hello, Young Learner! 👋</div>
+            
+                <!-- Quick topic pills -->
+                <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:560px;">
+                    <button class="ltag" data-color="purple" data-msg="Teach me the English alphabet A to Z">🔤 ABC</button>
+                    <button class="ltag" data-color="blue"   data-msg="5 + 3 = ? Explain step by step like a teacher">➕ Math</button>
+                    <button class="ltag" data-color="rose"   data-msg="Teach me 2 times table step by step">✖️ Tables</button>
+                    <button class="ltag" data-color="amber"  data-msg="Tell me about 5 animals and their sounds">🐘 Animals</button>
+                    <button class="ltag" data-color="green"  data-msg="Name 5 colors and describe them for kids">🎨 Colors</button>
+                    <button class="ltag" data-color="cyan"   data-msg="Recite Twinkle Twinkle Little Star poem">📖 Poems</button>
+                    <button class="ltag" data-color="pink"   data-msg="Tell me 5 fun general knowledge facts for kids">🌍 GK</button>
+                    <button class="ltag" data-color="indigo" data-msg="Name different fruits and tell me their colors">🍎 Fruits</button>
+                </div>
+
+                <div class="cards">
+                    <div class="card" data-msg="Teach me the ABC alphabet song">
+                        <div class="c-icon">🔤</div>
+                        <div class="c-title">ABC Alphabet Song</div>
+                        <div class="c-sub">Learn A B C D E F G…</div>
+                    </div>
+                    <div class="card" data-msg="What is 5 + 3? Explain like a teacher">
+                        <div class="c-icon">➕</div>
+                        <div class="c-title">Basic Math</div>
+                        <div class="c-sub">Addition, subtraction, tables</div>
+                    </div>
+                    <div class="card" data-msg="Tell me about 5 different animals and their sounds">
+                        <div class="c-icon">🐘</div>
+                        <div class="c-title">Animals &amp; Sounds</div>
+                        <div class="c-sub">Fun animal facts for kids</div>
+                    </div>
+                    <div class="card" data-msg="Recite a short poem or nursery rhyme for me">
+                        <div class="c-icon">📖</div>
+                        <div class="c-title">Poems &amp; Rhymes</div>
+                        <div class="c-sub">Twinkle Twinkle, Baa Baa…</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Learning topic strip (visible during chat) -->
+            <div id="learn-strip" style="display:none;">
+                <button class="ltag" data-color="purple" data-msg="Teach me the English alphabet A to Z">🔤 ABC</button>
+                <button class="ltag" data-color="blue"   data-msg="5 + 3 = ? Explain step by step like a teacher">➕ Math</button>
+                <button class="ltag" data-color="rose"   data-msg="Teach me 2 times table step by step">✖️ Tables</button>
+                <button class="ltag" data-color="amber"  data-msg="Tell me about 5 animals and their sounds">🐘 Animals</button>
+                <button class="ltag" data-color="green"  data-msg="Name 5 colors and describe them for kids">🎨 Colors</button>
+                <button class="ltag" data-color="cyan"   data-msg="Recite Twinkle Twinkle Little Star poem">📖 Poems</button>
+                <button class="ltag" data-color="pink"   data-msg="Tell me 5 fun general knowledge facts for kids">🌍 GK</button>
+                <button class="ltag" data-color="indigo" data-msg="Name different fruits and tell me their colors">🍎 Fruits</button>
+            </div>
+
+            <!-- Messages area -->
+            <div id="msgs-wrap" style="display:none;">
+                <div id="msgs">
+                    <!-- Typing indicator — always last child -->
+                    <div id="typing">
+                        <div class="msg-av bot">AI</div>
+                        <div class="typing-bub">
+                            <div class="dot"></div>
+                            <div class="dot"></div>
+                            <div class="dot"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input area -->
+            <div id="input-area">
+                <div class="input-shell">
+                    <!-- Inline mic (fills input only, not call mode) -->
+                    <button class="act-btn" id="mic-btn" title="Voice to text" aria-label="Voice input">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                            <rect x="9" y="2" width="6" height="12" rx="3" />
+                            <path d="M5 10a7 7 0 0 0 14 0" />
+                            <line x1="12" y1="19" x2="12" y2="22" />
+                            <line x1="9" y1="22" x2="15" y2="22" />
+                        </svg>
+                    </button>
+
+                    <textarea id="user-input" rows="1" placeholder="Ask me anything about school! 📚"
+                        aria-label="Chat input"></textarea>
+
+                    <button id="send-btn" aria-label="Send message">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2"
+                            stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                            <line x1="22" y1="2" x2="11" y2="13" />
+                            <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="input-hint">
+                    🌈 QReels is your friendly learning buddy for school topics only.
+                </div>
+            </div>
+
+        </div><!-- /#main -->
+    </div><!-- /#app -->
+
+    <!-- ============ CALL BUTTON (floating, bottom-right) ============ -->
+    <div id="call-panel">
+        <button class="fab" id="start-call-btn" title="Start voice call" aria-label="Start voice call">
+            <!-- Phone handset icon -->
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2
+               19.79 19.79 0 0 1-8.63-3.07
+               A19.5 19.5 0 0 1 4.07 11.5
+               19.79 19.79 0 0 1 1 2.82
+               A2 2 0 0 1 3 .82h3a2 2 0 0 1 2 1.72
+               c.127.96.361 1.903.7 2.81
+               a2 2 0 0 1-.45 2.11L7.09 8.91
+               a16 16 0 0 0 6 6l1.27-1.27
+               a2 2 0 0 1 2.11-.45
+               c.907.339 1.85.573 2.81.7
+               A2 2 0 0 1 22 16.92z" />
+            </svg>
+        </button>
+        <div class="call-label" id="call-label">📞 Baby AI</div>
+    </div>
+
+    <!-- ============ VOICE MODE OVERLAY ============ -->
+    <!--
+  Full-screen overlay shown during an active call.
+  States driven by CSS classes on #voice-overlay:
+    .listening  → green mic rings, wobble animation
+    .processing → amber colour
+    .speaking   → purple rings, waveform bars visible
+-->
+    <div id="voice-overlay" role="dialog" aria-modal="true" aria-label="Voice call active">
+
+        <!-- Animated mic avatar -->
+        <div class="vm-mic-wrap">
+            <div class="vm-ring"></div>
+            <div class="vm-ring"></div>
+            <div class="vm-ring"></div>
+            <div class="vm-mic-circle">
+                <!-- Microphone SVG -->
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="2" width="6" height="12" rx="3" />
+                    <path d="M5 10a7 7 0 0 0 14 0" />
+                    <line x1="12" y1="19" x2="12" y2="22" />
+                    <line x1="9" y1="22" x2="15" y2="22" />
+                </svg>
+            </div>
+        </div>
+
+        <!-- Status text -->
+        <div class="vm-status" id="vm-status-txt">Listening…</div>
+        <div class="vm-sub" id="vm-sub-txt">Speak your question</div>
+
+        <!-- Large waveform (visible only when speaking) -->
+        <div class="vm-wave">
+            <span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span>
+            <span></span>
+        </div>
+
+        <!-- End Call button -->
+        <button id="vm-end-btn" aria-label="End call">
+            <!-- Phone-off icon -->
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <line x1="1" y1="1" x2="23" y2="23" />
+                <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55
+               M5 12.55a10.94 10.94 0 0 1 5.17-2.39
+               M10.71 5.05A16 16 0 0 1 22.56 9
+               M1.42 9a15.91 15.91 0 0 1 4.7-2.88
+               M8.51 16.37A5.77 5.77 0 0 1 10.55 19" />
+            </svg>
+        </button>
+        <div class="vm-end-label">End Call</div>
+
+    </div>
+
+    <div id="toast"></div>
+
+    <!-- ============================================================
+     JAVASCRIPT
+============================================================ -->
+    <script>
+        'use strict';
+
+        /* ─────────────────────────────────────────────────────────────
+           STATE
+        ───────────────────────────────────────────────────────────── */
+        const S = {
+            sessions: [],
+            activeId: null,
+            loading: false,
+            inlineMic: { active: false, rec: null },
+            call: { active: false, audio: null, rec: null },
+        };
+
+        /* ─────────────────────────────────────────────────────────────
+           DOM
+        ───────────────────────────────────────────────────────────── */
+        const $ = id => document.getElementById(id);
+        const D = {
+            sidebar: $('sidebar'),
+            overlay: $('overlay'),
+            history: $('chat-history'),
+            welcome: $('welcome'),
+            wrap: $('msgs-wrap'),
+            msgs: $('msgs'),
+            typing: $('typing'),
+            input: $('user-input'),
+            send: $('send-btn'),
+            mic: $('mic-btn'),
+            menu: $('menu-btn'),
+            newBtn: $('new-chat-btn'),
+            newMob: $('new-mobile-btn'),
+            toast: $('toast'),
+            // call mode — endCall and callStatus removed (replaced by voice overlay)
+            startCall: $('start-call-btn'),
+            callLabel: $('call-label'),
+            callStatus: null,   // kept so setStatus() guards don't throw
+            callTxt: null,
+        };
+
+        /* ─────────────────────────────────────────────────────────────
+           UTILITIES
+        ───────────────────────────────────────────────────────────── */
+        const uid = () => Math.random().toString(36).slice(2, 9);
+        const now = () => new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        const esc = s => s
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+
+        let _toastTimer;
+        function toast(msg, ms = 3000) {
+            D.toast.textContent = msg;
+            D.toast.classList.add('show');
+            clearTimeout(_toastTimer);
+            _toastTimer = setTimeout(() => D.toast.classList.remove('show'), ms);
+        }
+
+        /**
+         * Lightweight Markdown → safe HTML
+         * Handles: fenced code, inline code, bold, italic, newlines
+         */
+        function md2html(raw) {
+            let s = esc(raw);
+            // Fenced code blocks
+            s = s.replace(/```(\w*)\n?([\s\S]*?)```/g,
+                '<pre><code>$2</code></pre>');
+            // Inline code
+            s = s.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+            // Bold
+            s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            // Italic
+            s = s.replace(/\*(.+?)\*/g, '<em>$1</em>');
+            // Newlines (outside pre blocks — handled by white-space:pre-wrap on .bubble)
+            return s;
+        }
+
+        /* ─────────────────────────────────────────────────────────────
+           SESSIONS
+        ───────────────────────────────────────────────────────────── */
+        function newSession() {
+            const sess = { id: uid(), title: 'New Chat', messages: [] };
+            S.sessions.unshift(sess);
+            activate(sess.id);
+            renderHistory();
+            return sess;
+        }
+
+        function activate(id) {
+            S.activeId = id;
+            const sess = getSession();
+            if (!sess) return;
+            if (sess.messages.length === 0) {
+                showWelcome();
+            } else {
+                showChat();
+                rebuildMessages(sess.messages);
+            }
+            document.querySelectorAll('.hist-item').forEach(el =>
+                el.classList.toggle('active', el.dataset.id === id));
+        }
+
+        const getSession = () => S.sessions.find(s => s.id === S.activeId);
+
+        /* ─────────────────────────────────────────────────────────────
+           VIEW HELPERS
+        ───────────────────────────────────────────────────────────── */
+        function showWelcome() {
+            D.welcome.style.display = 'flex';
+            D.wrap.style.display = 'none';
+            clearMessages();
+        }
+
+        function showChat() {
+            D.welcome.style.display = 'none';
+            D.wrap.style.display = 'block';
+            // Show the learning strip while chatting
+            const strip = document.getElementById('learn-strip');
+            if (strip) strip.style.display = 'flex';
+        }
+
+        function clearMessages() {
+            Array.from(D.msgs.children).forEach(c => { if (c !== D.typing) c.remove(); });
+        }
+
+        function scrollBottom() {
+            requestAnimationFrame(() => { D.wrap.scrollTop = D.wrap.scrollHeight; });
+        }
+
+        /* ─────────────────────────────────────────────────────────────
+           HISTORY SIDEBAR
+        ───────────────────────────────────────────────────────────── */
+        function renderHistory() {
+            D.history.innerHTML = '';
+            if (!S.sessions.length) {
+                D.history.innerHTML =
+                    '<div style="padding:10px 18px;font-size:12.5px;color:var(--t3);">No chats yet 📭</div>';
+                return;
+            }
+            S.sessions.forEach(s => {
+                const el = document.createElement('div');
+                el.className = 'hist-item' + (s.id === S.activeId ? ' active' : '');
+                el.dataset.id = s.id;
+                el.innerHTML = `
+      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" viewBox="0 0 24 24" style="flex-shrink:0">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      </svg>
+      <span class="hist-title">${esc(s.title)}</span>`;
+                el.addEventListener('click', () => { activate(s.id); closeSidebar(); });
+                D.history.appendChild(el);
+            });
+        }
+
+        /* ─────────────────────────────────────────────────────────────
+           MESSAGE RENDERING  — FIXED alignment & wrapping
+        ───────────────────────────────────────────────────────────── */
+        function buildRow(role, content, time, voiceTurn = false) {
+            const isUser = role === 'user';
+            const row = document.createElement('div');
+            row.className = `msg-row ${role}${voiceTurn ? ' voice-turn' : ''}`;
+
+            // Avatar
+            const av = document.createElement('div');
+            av.className = `msg-av ${isUser ? 'user' : 'bot'}`;
+            av.textContent = isUser ? 'S' : 'AI';
+
+            // Bubble wrapper
+            const body = document.createElement('div');
+            body.className = 'msg-body';
+
+            // Bubble
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble';
+            // User text is escaped; bot text gets md rendering
+            bubble.innerHTML = isUser ? esc(content) : md2html(content);
+
+            // Timestamp
+            const ts = document.createElement('div');
+            ts.className = 'msg-time';
+            ts.textContent = time;
+
+            body.appendChild(bubble);
+            body.appendChild(ts);
+
+            if (isUser) {
+                row.appendChild(body);
+                row.appendChild(av);
+            } else {
+                row.appendChild(av);
+                row.appendChild(body);
+            }
+
+            return row;
+        }
+
+        function rebuildMessages(messages) {
+            clearMessages();
+            messages.forEach(m =>
+                D.msgs.insertBefore(buildRow(m.role, m.content, m.time, m.voiceTurn), D.typing));
+            scrollBottom();
+        }
+
+        function appendMsg(role, content, time, voiceTurn = false) {
+            showChat();
+            D.msgs.insertBefore(buildRow(role, content, time, voiceTurn), D.typing);
+            scrollBottom();
+        }
+
+        /* ─────────────────────────────────────────────────────────────
+           TYPING INDICATOR
+        ───────────────────────────────────────────────────────────── */
+        const showTyping = () => { D.typing.style.display = 'flex'; scrollBottom(); };
+        const hideTyping = () => { D.typing.style.display = 'none'; };
+
+        /* ─────────────────────────────────────────────────────────────
+           TEXT CHAT  →  POST /chat
+        ───────────────────────────────────────────────────────────── */
+        async function sendText(text) {
+            text = text.trim();
+            if (!text || S.loading) return;
+
+            let sess = getSession() ?? newSession();
+
+            // Set session title from first message
+            if (!sess.messages.length) {
+                sess.title = text.length > 44 ? text.slice(0, 44) + '…' : text;
+                renderHistory();
+            }
+
+            const t = now();
+            sess.messages.push({ role: 'user', content: text, time: t });
+            appendMsg('user', text, t);
+
+            D.input.value = '';
+            resizeTextarea();
+            toggleSend();
+
+            S.loading = true;
+            showTyping();
+
+            try {
+                const res = await fetch('http://localhost:8000/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: text }),
+                });
+                if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || `HTTP ${res.status}`); }
+
+                const data = await res.json();
+                const reply = data.reply ?? data.message ?? JSON.stringify(data);
+                const bt = now();
+                hideTyping();
+                sess.messages.push({ role: 'bot', content: reply, time: bt });
+                appendMsg('bot', reply, bt);
+
+            } catch (err) {
+                hideTyping();
+                const errMsg =
+                    `⚠️ **Could not reach the server.**\n\nMake sure FastAPI is running:\n\`\`\`\nuvicorn main:app --reload\n\`\`\`\n**Error:** ${err.message}`;
+                const bt = now();
+                sess.messages.push({ role: 'bot', content: errMsg, time: bt });
+                appendMsg('bot', errMsg, bt);
+            } finally {
+                S.loading = false;
+            }
+        }
+
+        /* ─────────────────────────────────────────────────────────────
+           INPUT HELPERS
+        ───────────────────────────────────────────────────────────── */
+        function resizeTextarea() {
+            D.input.style.height = 'auto';
+            D.input.style.height = Math.min(D.input.scrollHeight, 160) + 'px';
+        }
+        function toggleSend() {
+            D.send.classList.toggle('ready', D.input.value.trim().length > 0);
+        }
+
+        D.input.addEventListener('input', () => { resizeTextarea(); toggleSend(); });
+        D.input.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendText(D.input.value); }
+        });
+        D.send.addEventListener('click', () => sendText(D.input.value));
+
+        /* ─────────────────────────────────────────────────────────────
+           SUGGESTION CARDS
+        ───────────────────────────────────────────────────────────── */
+        document.querySelectorAll('.card').forEach(card =>
+            card.addEventListener('click', () => {
+                D.input.value = card.dataset.msg;
+                resizeTextarea(); toggleSend();
+                sendText(D.input.value);
+            })
+        );
+
+        /* ── Learning strip tag buttons ── */
+        document.querySelectorAll('.ltag').forEach(tag =>
+            tag.addEventListener('click', () => {
+                const msg = tag.dataset.msg;
+                if (!msg) return;
+                // Highlight active
+                document.querySelectorAll('.ltag').forEach(t => t.classList.remove('active'));
+                tag.classList.add('active');
+                setTimeout(() => tag.classList.remove('active'), 1200);
+                sendText(msg);
+            })
+        );
+
+        /* ─────────────────────────────────────────────────────────────
+           NEW CHAT
+        ───────────────────────────────────────────────────────────── */
+        const startNewChat = () => { newSession(); renderHistory(); closeSidebar(); D.input.focus(); };
+        D.newBtn.addEventListener('click', startNewChat);
+        D.newMob.addEventListener('click', startNewChat);
+
+        /* ─────────────────────────────────────────────────────────────
+           MOBILE SIDEBAR
+        ───────────────────────────────────────────────────────────── */
+        const openSidebar = () => { D.sidebar.classList.add('open'); D.overlay.classList.add('open'); };
+        const closeSidebar = () => { D.sidebar.classList.remove('open'); D.overlay.classList.remove('open'); };
+        D.menu.addEventListener('click', openSidebar);
+        D.overlay.addEventListener('click', closeSidebar);
+
+        /* ─────────────────────────────────────────────────────────────
+           INLINE MIC BUTTON  (fills text input only, not call mode)
+        ───────────────────────────────────────────────────────────── */
+        (function initInlineMic() {
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SR) {
+                D.mic.title = 'Voice input not supported';
+                D.mic.style.cssText = 'opacity:.3;cursor:not-allowed';
+                return;
+            }
+
+            D.mic.addEventListener('click', () => {
+                if (S.call.active) { toast('🎤 Inline mic disabled during a call.'); return; }
+                const im = S.inlineMic;
+                if (im.active) { im.rec?.stop(); return; }
+
+                const r = new SR();
+                r.continuous = false; r.interimResults = true; r.lang = 'en-US';
+                im.rec = r; im.active = true;
+                D.mic.classList.add('listening');
+                toast('🎤 Listening — speak now!');
+
+                r.onresult = e => {
+                    let t = '';
+                    for (let i = e.resultIndex; i < e.results.length; i++) t += e.results[i][0].transcript;
+                    D.input.value = t; resizeTextarea(); toggleSend();
+                };
+                r.onend = () => {
+                    im.active = false; D.mic.classList.remove('listening');
+                    if (D.input.value.trim()) toast('✓ Voice captured — press Send!');
+                };
+                r.onerror = e => {
+                    im.active = false; D.mic.classList.remove('listening'); toast('⚠️ ' + e.error);
+                };
+                r.start();
+            });
+        })();
+
+        /* ─────────────────────────────────────────────────────────────
+           CALL MODE
+           ─────────────────────────────────────────────────────────
+           States: idle → listening → processing → speaking → listening …
+           User says "bye / stop / exit / end call" → stops call.
+        ───────────────────────────────────────────────────────────── */
+        const CallMode = (() => {
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            let active = false;
+            let rec = null;
+
+            /* ── UI state helpers ── */
+            const overlay = document.getElementById('voice-overlay');
+            const vmStatusTxt = document.getElementById('vm-status-txt');
+            const vmSubTxt = document.getElementById('vm-sub-txt');
+            const vmEndBtn = document.getElementById('vm-end-btn');
+            const inputArea = document.getElementById('input-area');
+
+            // Wire up the big End Call button inside the overlay
+            vmEndBtn.addEventListener('click', () => { stop(); toast('📵 Call ended.'); });
+
+            function setStatus(state) {
+                // Update the voice overlay's visual state
+                overlay.className = state === 'idle' ? '' : state;
+                if (state !== 'idle') overlay.classList.add('open');
+
+                const cfg = {
+                    listening: { main: 'Listening…', sub: 'Speak your question', icon: '🎤' },
+                    processing: { main: 'Thinking…', sub: 'Generating answer…', icon: '⚙️' },
+                    speaking: { main: 'AI Speaking…', sub: 'Playing response…', icon: '🔊' },
+                };
+                const c = cfg[state];
+                if (c && vmStatusTxt) {
+                    vmStatusTxt.textContent = c.main;
+                    vmSubTxt.textContent = c.sub;
+                }
+
+                // Keep old compact badge in sync (still used by setStatus called externally)
+                if (D.callStatus && D.callTxt) {
+                    D.callStatus.style.display = state === 'idle' ? 'none' : 'flex';
+                    if (state !== 'idle') {
+                        D.callStatus.className = state;
+                        D.callTxt.textContent = c ? `${c.icon} ${c.main}` : state;
+                    }
+                }
+            }
+
+            function showCallUI() {
+                D.startCall.classList.add('hidden');
+                D.callLabel.textContent = '';
+                // Disable text input during call
+                inputArea.classList.add('call-active');
+                setStatus('listening');
+            }
+
+            function hideCallUI() {
+                overlay.className = '';           // remove .open + state classes
+                D.startCall.classList.remove('hidden');
+                D.callLabel.textContent = '📞 Baby AI';
+                inputArea.classList.remove('call-active');
+                setStatus('idle');
+                if (D.callStatus) D.callStatus.style.display = 'none';
+            }
+
+            /* ── One turn: send utterance → play audio ── */
+            async function processUtterance(spokenText) {
+                if (!spokenText.trim() || !active) return;
+
+                // Exit command
+                if (/^(bye|stop|exit|goodbye|end call|band karo)$/i.test(spokenText.trim())) {
+                    stop(); toast('👋 Call ended — goodbye!'); return;
+                }
+
+                setStatus('processing');
+
+                let sess = getSession() ?? newSession();
+                if (!sess.messages.length) {
+                    sess.title = spokenText.length > 44 ? spokenText.slice(0, 44) + '…' : spokenText;
+                    renderHistory();
+                }
+                const ut = now();
+                sess.messages.push({ role: 'user', content: spokenText, time: ut, voiceTurn: true });
+                appendMsg('user', spokenText, ut, true);
+
+                try {
+                    const res = await fetch('http://localhost:8000/voice-chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text: spokenText }),
+                    });
+                    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || `HTTP ${res.status}`); }
+
+                    const data = await res.json();
+                    const reply = data.reply;
+                    const audioUrl = data.audio_url;
+                    const bt = now();
+                    sess.messages.push({ role: 'bot', content: reply, time: bt, voiceTurn: true });
+                    appendMsg('bot', reply, bt, true);
+
+                    // Play audio
+                    setStatus('speaking');
+                    if (S.call.audio) { S.call.audio.pause(); S.call.audio = null; }
+
+                    const audio = new Audio(audioUrl + '?t=' + Date.now()); // cache-bust
+                    S.call.audio = audio;
+
+                    const resumeListening = () => {
+                        if (!active) return;
+                        setStatus('listening');
+                        startListening();
+                    };
+
+                    audio.onended = resumeListening;
+                    audio.onerror = () => { toast('⚠️ Audio error — continuing…'); resumeListening(); };
+
+                    await audio.play().catch(() => {
+                        toast('▶️ Click anywhere to hear the AI response.');
+                        document.addEventListener('click', () => audio.play(), { once: true });
+                    });
+
+                } catch (err) {
+                    const bt = now();
+                    const msg = `⚠️ Voice chat error: ${err.message}`;
+                    sess.messages.push({ role: 'bot', content: msg, time: bt });
+                    appendMsg('bot', msg, bt);
+                    if (active) { setStatus('listening'); startListening(); }
+                }
+            }
+
+            /* ── Start one SpeechRecognition turn ── */
+            function startListening() {
+                if (!active || !SR) return;
+
+                rec = new SR();
+                rec.continuous = false;
+                rec.interimResults = false;
+                rec.lang = 'en-US';
+
+                rec.onresult = e => {
+                    const transcript = e.results[0][0].transcript;
+                    rec.stop();
+                    processUtterance(transcript);
+                };
+
+                rec.onerror = e => {
+                    if (!active) return;
+                    if (e.error === 'no-speech') {
+                        // Silently restart
+                        setStatus('listening');
+                        startListening();
+                    } else {
+                        toast('⚠️ Mic error: ' + e.error);
+                        setTimeout(() => { if (active) { setStatus('listening'); startListening(); } }, 1500);
+                    }
+                };
+
+                rec.start();
+            }
+
+            /* ── Public ── */
+            function start() {
+                if (!SR) { toast('⚠️ Voice calls need Chrome or Edge browser.'); return; }
+                if (active) return;
+                active = true;
+                showCallUI();
+                toast('📞 Call started — speak your question!', 3500);
+                startListening();
+            }
+
+            function stop() {
+                active = false;
+                try { if (rec) rec.stop(); } catch (_) { }
+                if (S.call.audio) { S.call.audio.pause(); S.call.audio = null; }
+                hideCallUI();
+            }
+
+            return { start, stop };
+        })();
+
+        D.startCall.addEventListener('click', () => CallMode.start());
+        D.endCall.addEventListener('click', () => { CallMode.stop(); toast('📵 Call ended.'); });
+
+        /* ─────────────────────────────────────────────────────────────
+           BOOT
+        ───────────────────────────────────────────────────────────── */
+        newSession();
+        renderHistory();
+        D.input.focus();
+    </script>
+</body>
+
+</html>
+
