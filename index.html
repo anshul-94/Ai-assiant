@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>QReels – Kids Learning Assistant</title>
+    <title>voice ai</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap"
@@ -33,15 +33,9 @@
             --c-hover:      #1a1e38;
             --c-border:     #1e2240;
 
-            /* Accent */
-            --accent:       #7c6df0;
-            --accent-2:     #5b4fcf;
-            --accent-dim:   rgba(124, 109, 240, .15);
-            --accent-glow:  rgba(124, 109, 240, .4);
-            --user-grad:    linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
 
             /* Call colours */
-            --call-green: #22c55e;
+            --call-green: #00f5a0;
             --call-red:   #ef4444;
             --call-glow-g: rgba(34, 197, 94, .5);
             --call-glow-r: rgba(239, 68, 68, .5);
@@ -373,7 +367,7 @@
         }
 
         .card:hover {
-            border-color: var(--accent);
+            border-color: var(--call-green);
             background: var(--c-hover);
             transform: translateY(-3px);
             box-shadow: 0 8px 24px var(--accent-dim);
@@ -698,10 +692,11 @@
             transition: border-color var(--ease), box-shadow var(--ease);
         }
 
-        .input-shell:focus-within {
-            border-color: var(--accent);
+        .input-shell:hover{
+            border-color: var(--call-green);
             box-shadow: 0 0 0 3px var(--accent-dim);
         }
+
 
         #user-input {
             flex: 1;
@@ -734,7 +729,7 @@
         }
 
         .act-btn:hover {
-            background: var(--c-hover);
+            background: var(--call-green);
             color: var(--t1);
         }
 
@@ -1351,9 +1346,7 @@
                 <!-- Quick topic pills -->
                 <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:560px;">
                     <button class="ltag" data-color="purple" data-msg="Teach me the English alphabet A to Z">🔤 ABC</button>
-                    <button class="ltag" data-color="blue"   data-msg="5 + 3 = ? Explain step by step like a teacher">➕ Math</button>
                     <button class="ltag" data-color="rose"   data-msg="Teach me 2 times table step by step">✖️ Tables</button>
-                    <button class="ltag" data-color="amber"  data-msg="Tell me about 5 animals and their sounds">🐘 Animals</button>
                     <button class="ltag" data-color="green"  data-msg="Name 5 colors and describe them for kids">🎨 Colors</button>
                     <button class="ltag" data-color="cyan"   data-msg="Recite Twinkle Twinkle Little Star poem">📖 Poems</button>
                     <button class="ltag" data-color="pink"   data-msg="Tell me 5 fun general knowledge facts for kids">🌍 GK</button>
@@ -1394,6 +1387,14 @@
                 <button class="ltag" data-color="cyan"   data-msg="Recite Twinkle Twinkle Little Star poem">📖 Poems</button>
                 <button class="ltag" data-color="pink"   data-msg="Tell me 5 fun general knowledge facts for kids">🌍 GK</button>
                 <button class="ltag" data-color="indigo" data-msg="Name different fruits and tell me their colors">🍎 Fruits</button>
+                <button class="ltag" data-color="rose"   data-msg="Teach me 2 times table step by step">✖️ Tables</button>
+                <button class="ltag" data-color="amber"  data-msg="Tell me about 5 animals and their sounds">🐘 Animals</button>
+                <button class="ltag" data-color="green"  data-msg="Name 5 colors and describe them for kids">🎨 Colors</button>
+                <button class="ltag" data-color="cyan"   data-msg="Recite Twinkle Twinkle Little Star poem">📖 Poems</button>
+                <button class="ltag" data-color="rose"   data-msg="Teach me 2 times table step by step">✖️ Tables</button>
+                <button class="ltag" data-color="amber"  data-msg="Tell me about 5 animals and their sounds">🐘 Animals</button>
+                <button class="ltag" data-color="green"  data-msg="Name 5 colors and describe them for kids">🎨 Colors</button>
+
             </div>
 
             <!-- Messages area -->
@@ -1733,6 +1734,7 @@
             D.msgs.insertBefore(buildRow(role, content, time, voiceTurn), D.typing);
             scrollBottom();
         }
+
 
         /* ─────────────────────────────────────────────────────────────
            TYPING INDICATOR
