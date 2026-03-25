@@ -1,5 +1,5 @@
 import requests
-API_KEY = "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"
+API_KEY = "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"
 def get_answer(question):
 
     url = "https://openrouter.ai/api/v1/chat/completions"

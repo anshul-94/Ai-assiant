@@ -42,7 +42,7 @@ app.mount("/audio", StaticFiles(directory="audio"), name="audio")
 
 OPENROUTER_API_KEY = os.getenv(
     "OPENROUTER_API_KEY",
-    "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",
+    "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",
 )
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 MODEL          = "openai/gpt-3.5-turbo"
