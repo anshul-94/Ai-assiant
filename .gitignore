@@ -1,0 +1,10 @@
+.env
+__pycache__/
+*.pyc
+audio/input.wav
+audio/output.wav
+audio/output.mp3
+.DS_Store
+.vscode/
+.idea/
+.agents/

@@ -1599,7 +1599,12 @@
             s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
             // Italic
             s = s.replace(/\*(.+?)\*/g, '<em>$1</em>');
-            // Newlines (outside pre blocks — handled by white-space:pre-wrap on .bubble)
+            // Numbered list lines (e.g. "1. Step one")
+            s = s.replace(/^(\d+\.\s)/gm, '<br>$1');
+            // Newlines → <br> for clean wrapping in bubbles
+            s = s.replace(/\n/g, '<br>');
+            // Clean up double-br artifacts from code blocks
+            s = s.replace(/(<\/pre>)<br>/g, '$1');
             return s;
         }
 
@@ -1868,7 +1873,7 @@
                 if (im.active) { im.rec?.stop(); return; }
 
                 const r = new SR();
-                r.continuous = false; r.interimResults = true; r.lang = 'en-US';
+                r.continuous = false; r.interimResults = true; r.lang = 'en-IN';
                 im.rec = r; im.active = true;
                 D.mic.classList.add('listening');
                 toast('🎤 Listening — speak now!');
@@ -2025,7 +2030,7 @@
                 rec = new SR();
                 rec.continuous = false;
                 rec.interimResults = false;
-                rec.lang = 'en-US';
+                rec.lang = 'en-IN'; // en-IN handles English + Hinglish better
 
                 rec.onresult = e => {
                     const transcript = e.results[0][0].transcript;
@@ -2069,7 +2074,7 @@
         })();
 
         D.startCall.addEventListener('click', () => CallMode.start());
-        D.endCall.addEventListener('click', () => { CallMode.stop(); toast('📵 Call ended.'); });
+        // Note: End Call is handled by vmEndBtn inside the overlay (wired up in CallMode)
 
         /* ─────────────────────────────────────────────────────────────
            BOOT
@@ -2081,4 +2086,3 @@
 </body>
 
 </html>
-

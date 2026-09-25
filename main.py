@@ -1,29 +1,34 @@
 """
-AI Chat Assistant - FastAPI Backend
-- /chat      → text chat via OpenRouter (existing)
-- /voice-chat → voice call mode: LLM reply + edge-tts MP3 generation
+Qreels AI Tutor — FastAPI Backend  v3.0
+- /chat       → text chat with language detection + OpenRouter LLM
+- /voice-chat → voice mode: STT → LLM → TTS (language-aware)
+- /health     → status check
 """
 
 import os
 import asyncio
-import edge_tts
 import httpx
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-# Import existing util functions
+# Load .env BEFORE any os.getenv calls
+load_dotenv()
+
+# Project utils (imported after load_dotenv so they pick up the key)
+from utils.language_detector import detect_language
 from utils.llm_response import get_answer
+from utils.text_to_speech import speak_async
 
 # ---------------------------------------------------------------------------
 # App Setup
 # ---------------------------------------------------------------------------
 
-app = FastAPI(title="AI Chat Assistant", version="2.0.0")
+app = FastAPI(title="Qreels AI Tutor", version="3.0.0")
 
-# CORS — allow browser to call API from any origin (local dev)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -32,27 +37,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve the audio/ folder so the browser can fetch the generated MP3
 os.makedirs("audio", exist_ok=True)
 app.mount("/audio", StaticFiles(directory="audio"), name="audio")
 
 # ---------------------------------------------------------------------------
-# Configuration — OpenRouter
+# Configuration
 # ---------------------------------------------------------------------------
 
-OPENROUTER_API_KEY = os.getenv(
-    "OPENROUTER_API_KEY",
-    "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",
-)
-OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-MODEL          = "openai/gpt-3.5-turbo"
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+OPENROUTER_URL     = "https://openrouter.ai/api/v1/chat/completions"
+MODEL              = "openai/gpt-4o-mini"
+TTS_OUTPUT_FILE    = "audio/output.mp3"
 
-# edge-tts settings (mirrors utils/text_to_speech.py but without afplay)
-TTS_VOICE       = "en-US-AriaNeural"
-TTS_OUTPUT_FILE = "audio/output.mp3"
+print(f"OPENROUTER_API_KEY loaded: {bool(OPENROUTER_API_KEY)}")
 
 # ---------------------------------------------------------------------------
-# Schemas
+# Pydantic schemas
 # ---------------------------------------------------------------------------
 
 class ChatRequest(BaseModel):
@@ -60,6 +60,7 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     reply: str
+    language: str       # 'english' or 'hinglish' — useful for frontend/debug
 
 class VoiceChatRequest(BaseModel):
     text: str
@@ -67,56 +68,105 @@ class VoiceChatRequest(BaseModel):
 class VoiceChatResponse(BaseModel):
     reply: str
     audio_url: str
+    language: str
 
 # ---------------------------------------------------------------------------
-# Internal helpers
+# OpenRouter LLM helper (used by /chat directly for async HTTP)
 # ---------------------------------------------------------------------------
 
-async def _generate_speech(text: str) -> None:
-    """
-    Convert text → MP3 using edge-tts and save to audio/output.mp3.
-    Does NOT play locally — the browser plays the file via /audio/output.mp3.
-    """
-    import re
-    clean = re.sub(r"[^\w\s.,!?'-]", "", text)   # strip markdown symbols for TTS
-    if len(clean.strip()) < 3:
-        return
-    communicate = edge_tts.Communicate(
-        text=clean,
-        voice=TTS_VOICE,
-        rate="-10%",
-        pitch="+0Hz",
-    )
-    await communicate.save(TTS_OUTPUT_FILE)
+_SYSTEM_ENGLISH = """\
+You are Qreels, a friendly AI school tutor for Nursery to Class 5 students.
+
+You MUST answer ONLY in simple, clear English.
+Never switch to Hinglish or Hindi.
+Never use Devanagari/Hindi Unicode characters.
+
+SCOPE: School subjects — English, maths, science, general knowledge,
+poems, animals, shapes, colours, numbers, tables, and homework.
+
+RULES:
+1. Short, age-appropriate answers (1-3 sentences for simple questions).
+2. For maths, show step-by-step working.
+3. Use words a primary school child understands.
+4. Give one real-life example when helpful.
+5. Only ask a follow-up question when it genuinely helps learning.
+6. Use emojis sparingly — not in every sentence.
+7. NEVER use Devanagari or non-Roman script.
+
+OUT-OF-SCOPE: Reply: "I am your school learning assistant. I can help with
+school subjects, basic maths, science, English, poems, and general knowledge."
+Do not hallucinate. If unknown, say so honestly.\
+"""
+
+_SYSTEM_HINGLISH = """\
+Tum Qreels ho, ek friendly AI school tutor for Nursery to Class 5 students.
+
+Tum SIRF simple Hinglish mein jawab doge — Hindi words ko Roman/English letters
+mein likho. KABHI Devanagari script mat use karo.
+
+Sahi: "Python ek programming language hai."
+Galat: "Python एक programming language है।"
+
+SCOPE: School subjects — English, maths, science, general knowledge,
+poems, animals, shapes, colours, numbers, tables, aur homework.
+
+RULES:
+1. Jawab chhota aur age-appropriate rakho (1-3 sentences for simple sawaal).
+2. Maths mein step-by-step calculation dikhao.
+3. Aasaan words use karo.
+4. Ek chota real-life example do jab zaroorat ho.
+5. Har jawab ke baad follow-up mat poochho — sirf jab zaroorat ho.
+6. Emojis zyada mat lagao.
+7. KABHI Devanagari ya non-Roman script mat likho.
+
+OUT-OF-SCOPE: "Main tera school learning assistant hoon. Main school subjects,
+basic maths, science, English, poems aur general knowledge mein help kar sakta hoon."
+Galat answer mat banao. Agar pata nahi, seedha bol do.\
+"""
 
 
-async def _call_openrouter(user_message: str) -> str:
-    """Call OpenRouter and return the assistant reply text."""
+async def _call_openrouter(user_message: str, language: str) -> str:
+    """Async call to OpenRouter. Raises HTTPException on error."""
+    if not OPENROUTER_API_KEY:
+        raise HTTPException(
+            status_code=500,
+            detail="OPENROUTER_API_KEY is missing. Please set it in your .env file.",
+        )
+
+    system = _SYSTEM_HINGLISH if language == "hinglish" else _SYSTEM_ENGLISH
+
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type":  "application/json",
         "HTTP-Referer":  "http://localhost:8000",
-        "X-Title":       "AI Chat Assistant",
+        "X-Title":       "Qreels Study AI",
     }
     payload = {
         "model": MODEL,
         "messages": [
-            {
-                "role": "system",
-                "content": (
-                    "You are a helpful, knowledgeable, and friendly AI assistant. "
-                    "Provide clear, concise, and accurate answers."
-                ),
-            },
-            {"role": "user", "content": user_message},
+            {"role": "system", "content": system},
+            {"role": "user",   "content": user_message},
         ],
-        "temperature": 0.7,
-        "max_tokens":  1024,
+        "temperature": 0.5,
+        "max_tokens":  512,
     }
+
     async with httpx.AsyncClient(timeout=30.0) as client:
         resp = await client.post(OPENROUTER_URL, json=payload, headers=headers)
-        resp.raise_for_status()
-    return resp.json()["choices"][0]["message"]["content"].strip()
+
+    if resp.status_code == 401:
+        raise HTTPException(
+            status_code=401,
+            detail="LLM authentication failed. Please check your OPENROUTER_API_KEY.",
+        )
+
+    resp.raise_for_status()
+
+    import re
+    reply = resp.json()["choices"][0]["message"]["content"].strip()
+    # Strip any Devanagari that slipped through
+    reply = re.sub(r"[\u0900-\u097F]+", "", reply).strip()
+    return reply
 
 # ---------------------------------------------------------------------------
 # Endpoints
@@ -124,65 +174,86 @@ async def _call_openrouter(user_message: str) -> str:
 
 @app.get("/", include_in_schema=False)
 async def serve_frontend():
-    """Serve index.html at the root URL."""
     return FileResponse("index.html")
 
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     """
-    Text chat endpoint — forwards message to OpenRouter and returns plain text reply.
-    Used by the existing text chat UI.
+    Text chat endpoint.
+    1. Detect language (english / hinglish)
+    2. Call OpenRouter with language-aware system prompt
+    3. Return reply + detected language
     """
-    if not request.message.strip():
+    msg = request.message.strip()
+    if not msg:
         raise HTTPException(status_code=400, detail="Message cannot be empty.")
 
-    try:
-        reply = await _call_openrouter(request.message)
-        return ChatResponse(reply=reply)
+    # Language detection
+    language = detect_language(msg)
+    print(f"[/chat] detected_language={language} | msg={msg[:60]}")
 
+    try:
+        reply = await _call_openrouter(msg, language)
+        return ChatResponse(reply=reply, language=language)
+
+    except HTTPException:
+        raise
     except httpx.HTTPStatusError as exc:
+        if exc.response.status_code == 401:
+            raise HTTPException(
+                status_code=401,
+                detail="LLM authentication failed. Please check your OPENROUTER_API_KEY.",
+            )
         raise HTTPException(
             status_code=exc.response.status_code,
-            detail=f"OpenRouter API error: {exc.response.text}",
+            detail=f"OpenRouter API error: {exc.response.status_code}",
         )
-    except httpx.RequestError as exc:
-        raise HTTPException(status_code=503, detail=f"Could not reach OpenRouter: {exc}")
+    except httpx.RequestError:
+        raise HTTPException(
+            status_code=503,
+            detail="Could not reach OpenRouter. Check your internet connection.",
+        )
     except (KeyError, IndexError):
-        raise HTTPException(status_code=500, detail="Unexpected response format from OpenRouter.")
+        raise HTTPException(
+            status_code=500,
+            detail="Unexpected response format from OpenRouter.",
+        )
 
 
 @app.post("/voice-chat", response_model=VoiceChatResponse)
 async def voice_chat(request: VoiceChatRequest):
     """
-    Voice Call Mode endpoint.
-
-    Flow:
-    1. Receive transcribed user speech as plain text.
-    2. Generate an AI reply using utils/llm_response.get_answer()
-       (EduBuddy GPT-4o-mini, bilingual Hinglish/English teacher persona).
-    3. Convert the reply to MP3 with edge-tts → saved to audio/output.mp3.
-    4. Return the reply text + the URL to stream the audio.
+    Voice call mode endpoint.
+    1. Detect language from transcribed text
+    2. Call LLM (get_answer) with language param — runs in thread pool
+    3. Generate TTS with language-appropriate Edge TTS voice
+    4. Return reply text + audio URL + detected language
     """
-    if not request.text.strip():
+    text = request.text.strip()
+    if not text:
         raise HTTPException(status_code=400, detail="Text cannot be empty.")
 
     try:
-        # Step 1 — LLM: use the existing EduBuddy prompt from utils/llm_response.py
-        # get_answer() is synchronous; run in thread pool to avoid blocking the event loop
-        reply = await asyncio.get_event_loop().run_in_executor(
-            None, get_answer, request.text
-        )
+        # Language detection
+        language = detect_language(text)
+        print(f"[/voice-chat] detected_language={language} | text={text[:60]}")
 
-        # Step 2 — TTS: generate MP3 (browser will play it, no local afplay)
-        await _generate_speech(reply)
+        # LLM call (synchronous get_answer in thread pool)
+        loop = asyncio.get_event_loop()
+        reply = await loop.run_in_executor(None, get_answer, text, language)
 
-        # Return reply text + audio URL (cache-busting is handled by the frontend)
+        # TTS — pick voice based on language
+        await speak_async(reply, language)
+
         return VoiceChatResponse(
             reply=reply,
             audio_url="/audio/output.mp3",
+            language=language,
         )
 
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Voice chat error: {str(exc)}")
 
@@ -193,4 +264,10 @@ async def voice_chat(request: VoiceChatRequest):
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "model": MODEL, "tts_voice": TTS_VOICE}
+    from utils.text_to_speech import VOICES
+    return {
+        "status": "ok",
+        "model": MODEL,
+        "api_key_set": bool(OPENROUTER_API_KEY),
+        "tts_voices": VOICES,
+    }
