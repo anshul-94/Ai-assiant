@@ -1411,6 +1411,12 @@
 <script>
 'use strict';
 
+const API_BASE_URL =
+  window.location.hostname === "localhost" ||
+  window.location.hostname === "127.0.0.1"
+    ? "http://127.0.0.1:8000"
+    : "";
+
 /* ─── STATE ─────────────────────────────────────────── */
 const S = {
   sessions: [],
@@ -1611,7 +1617,7 @@ async function sendText(text) {
   showTyping();
 
   try {
-    const res = await fetch('http://localhost:8000/chat', {
+    const res = await fetch(`${API_BASE_URL}/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: text }),
@@ -1796,7 +1802,7 @@ const CallMode = (() => {
     appendMsg('user', spokenText, ut, true);
 
     try {
-      const res = await fetch('http://localhost:8000/voice-chat', {
+      const res = await fetch(`${API_BASE_URL}/voice-chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: spokenText }),

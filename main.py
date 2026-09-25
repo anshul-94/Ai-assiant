@@ -271,3 +271,10 @@ async def health():
         "api_key_set": bool(OPENROUTER_API_KEY),
         "tts_voices": VOICES,
     }
+
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port)
+
