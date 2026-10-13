@@ -1737,6 +1737,140 @@ D.sbOverlay.addEventListener('click', closeSidebar);
   });
 })();
 
+/* ─── BROWSER SPEECH SYNTHESIS HELPER ───────────────── */
+const VoiceSpeaker = (() => {
+  const hasSynth = 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined';
+  let cachedVoices = [];
+  let currentUtterance = null;
+
+  function loadVoices() {
+    if (!hasSynth) return [];
+    try {
+      const v = window.speechSynthesis.getVoices();
+      if (v && v.length) cachedVoices = v;
+    } catch (_) {}
+    return cachedVoices;
+  }
+
+  if (hasSynth) {
+    loadVoices();
+    if (typeof window.speechSynthesis.onvoiceschanged !== 'undefined') {
+      window.speechSynthesis.onvoiceschanged = () => { loadVoices(); };
+    }
+  }
+
+  function cleanForSpeech(raw) {
+    if (!raw) return '';
+    return raw
+      .replace(/```[\s\S]*?```/g, '')     // multiline code
+      .replace(/`[^`\n]+`/g, '')           // inline code
+      .replace(/\*\*(.+?)\*\*/g, '$1')     // bold
+      .replace(/\*(.+?)\*/g, '$1')         // italic
+      .replace(/#{1,6}\s+/g, '')           // markdown headings
+      .replace(/^\s*[-*+]\s+/gm, '')       // bullet lists
+      .replace(/^\s*\d+\.\s+/gm, '')       // numbered lists
+      // Emojis, variation selectors & zero-width joiners:
+      .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FAFF}\u{FE00}-\u{FE0F}\u{200D}]/gu, '')
+      .replace(/[#\[\]{}|\\^~<>_]/g, ' ')  // special symbols
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function pickVoice(lang) {
+    const voices = loadVoices();
+    if (!voices || !voices.length) return null;
+
+    const norm = str => (str || '').toLowerCase().replace(/_/g, '-');
+
+    if (lang === 'hinglish') {
+      // 1. Prefer Indian English voice (en-IN) - excels at pronouncing Roman Hinglish
+      const enIn = voices.find(v => norm(v.lang) === 'en-in' || /india|indian/i.test(v.name));
+      if (enIn) return enIn;
+
+      // 2. Hindi voice (hi-IN)
+      const hiIn = voices.find(v => norm(v.lang).startsWith('hi') || /hindi/i.test(v.name));
+      if (hiIn) return hiIn;
+
+      // 3. Fallback: Any English voice
+      const anyEn = voices.find(v => norm(v.lang).startsWith('en'));
+      if (anyEn) return anyEn;
+
+      return voices[0];
+    } else {
+      // English
+      const enIn = voices.find(v => norm(v.lang) === 'en-in' || /india|indian/i.test(v.name));
+      if (enIn) return enIn;
+
+      const anyEn = voices.find(v => norm(v.lang).startsWith('en'));
+      if (anyEn) return anyEn;
+
+      return voices[0];
+    }
+  }
+
+  function speak(text, lang, onEndCallback, onErrorCallback) {
+    if (!hasSynth) {
+      if (onErrorCallback) onErrorCallback({ error: 'not-supported' });
+      return;
+    }
+
+    try {
+      window.speechSynthesis.cancel();
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
+    } catch (_) {}
+
+    const clean = cleanForSpeech(text);
+    if (!clean) {
+      if (onEndCallback) onEndCallback();
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(clean);
+    currentUtterance = utterance; // Retain reference to prevent GC bug
+
+    const voice = pickVoice(lang);
+    if (voice) {
+      utterance.voice = voice;
+      utterance.lang = voice.lang;
+    } else {
+      utterance.lang = (lang === 'hinglish') ? 'en-IN' : 'en-US';
+    }
+
+    utterance.rate = 0.95;
+    utterance.pitch = 1.0;
+
+    let finished = false;
+    const finalize = (cb, arg) => {
+      if (finished) return;
+      finished = true;
+      currentUtterance = null;
+      if (cb) cb(arg);
+    };
+
+    utterance.onend = () => finalize(onEndCallback);
+    utterance.onerror = (e) => finalize(onErrorCallback, e);
+
+    try {
+      window.speechSynthesis.speak(utterance);
+    } catch (err) {
+      finalize(onErrorCallback, { error: err.message });
+    }
+  }
+
+  function stop() {
+    currentUtterance = null;
+    if (hasSynth) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch (_) {}
+    }
+  }
+
+  return { isSupported: hasSynth, speak, stop, cleanForSpeech };
+})();
+
 /* ─── CALL MODE ──────────────────────────────────────── */
 const CallMode = (() => {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1758,7 +1892,7 @@ const CallMode = (() => {
     const cfg = {
       listening:  { main: 'Listening...',            sub: 'Speak your question' },
       processing: { main: 'Thinking...',              sub: 'Generating your answer' },
-      speaking:   { main: 'StudyMate AI is speaking...', sub: 'Playing response' },
+      speaking:   { main: 'StudyMate AI is speaking...', sub: 'Voice response playing' },
     };
     const c = cfg[state];
     if (c && vmStatusTxt) { vmStatusTxt.textContent = c.main; vmSubTxt.textContent = c.sub; }
@@ -1783,6 +1917,16 @@ const CallMode = (() => {
     setStatus('idle');
   }
 
+  function stopMic() {
+    if (rec) {
+      try {
+        if (typeof rec.abort === 'function') rec.abort();
+        else rec.stop();
+      } catch (_) {}
+      rec = null;
+    }
+  }
+
   async function processUtterance(spokenText) {
     if (!spokenText.trim() || !active) return;
 
@@ -1790,6 +1934,8 @@ const CallMode = (() => {
       stop(); toast('Goodbye! Call ended.'); return;
     }
 
+    // Stop mic while generating answer and speaking
+    stopMic();
     setStatus('processing');
 
     let sess = getSession() ?? newSession();
@@ -1810,67 +1956,132 @@ const CallMode = (() => {
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || `HTTP ${res.status}`); }
 
       const data = await res.json();
-      const reply = data.reply;
-      const audioUrl = data.audio_url;
+      const reply = data.reply || 'I heard you, but could not formulate a response.';
+      const detectedLang = data.language || 'english';
       const bt = now();
+
       sess.messages.push({ role: 'bot', content: reply, time: bt, voiceTurn: true });
       appendMsg('bot', reply, bt, true);
 
+      // Check if call was ended while request was in-flight
+      if (!active) return;
+
       setStatus('speaking');
-      if (S.call.audio) { S.call.audio.pause(); S.call.audio = null; }
 
-      const audio = new Audio(audioUrl + '?t=' + Date.now());
-      S.call.audio = audio;
+      if (!VoiceSpeaker.isSupported) {
+        toast('Voice speech is not supported in this browser.');
+        setTimeout(() => {
+          if (active) {
+            setStatus('listening');
+            startListening();
+          }
+        }, 1500);
+        return;
+      }
 
-      const resumeListening = () => {
-        if (!active) return;
-        setStatus('listening');
-        startListening();
-      };
-
-      audio.onended = resumeListening;
-      audio.onerror = () => { toast('Audio error — continuing...'); resumeListening(); };
-
-      await audio.play().catch(() => {
-        toast('Click anywhere to hear the AI response.');
-        document.addEventListener('click', () => audio.play(), { once: true });
-      });
+      VoiceSpeaker.speak(
+        reply,
+        detectedLang,
+        // onEnd:
+        () => {
+          if (!active) return;
+          setStatus('listening');
+          startListening();
+        },
+        // onError:
+        (err) => {
+          if (!active) return;
+          if (err && (err.error === 'canceled' || err.error === 'interrupted')) {
+            return;
+          }
+          console.warn('SpeechSynthesis error:', err);
+          toast('Speech playback unavailable on this device.');
+          setStatus('listening');
+          startListening();
+        }
+      );
 
     } catch (err) {
       const bt = now();
       const msg = `Voice chat error: ${err.message}`;
       sess.messages.push({ role: 'bot', content: msg, time: bt });
       appendMsg('bot', msg, bt);
-      if (active) { setStatus('listening'); startListening(); }
+      toast('Could not get answer from assistant.');
+
+      // Gracefully resume listening without triggering repeated requests
+      if (active) {
+        setTimeout(() => {
+          if (active) {
+            setStatus('listening');
+            startListening();
+          }
+        }, 1500);
+      }
     }
   }
 
   function startListening() {
     if (!active || !SR) return;
-    rec = new SR();
-    rec.continuous = false;
-    rec.interimResults = false;
-    rec.lang = 'en-IN';
+    stopMic();
 
-    rec.onresult = e => {
-      const transcript = e.results[0][0].transcript;
-      rec.stop();
-      processUtterance(transcript);
-    };
+    try {
+      rec = new SR();
+      rec.continuous = false;
+      rec.interimResults = false;
+      rec.lang = 'en-IN';
 
-    rec.onerror = e => {
-      if (!active) return;
-      if (e.error === 'no-speech') { setStatus('listening'); startListening(); }
-      else { toast('Mic error: ' + e.error); setTimeout(() => { if (active) { setStatus('listening'); startListening(); } }, 1500); }
-    };
+      rec.onresult = e => {
+        const transcript = e.results && e.results[0] && e.results[0][0] ? e.results[0][0].transcript : '';
+        stopMic();
+        if (transcript) {
+          processUtterance(transcript);
+        } else if (active) {
+          setStatus('listening');
+          startListening();
+        }
+      };
 
-    rec.start();
+      rec.onerror = e => {
+        if (!active) return;
+        if (e.error === 'no-speech') {
+          // Normal timeout when no speech is detected; simply re-arm listening
+          setStatus('listening');
+          startListening();
+        } else if (e.error === 'aborted') {
+          // Stopped programmatically; ignore
+        } else if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+          toast('Microphone access denied. Call ended.');
+          stop();
+        } else {
+          toast('Mic notice: ' + e.error);
+          setTimeout(() => {
+            if (active) {
+              setStatus('listening');
+              startListening();
+            }
+          }, 2000);
+        }
+      };
+
+      rec.start();
+    } catch (err) {
+      console.warn('Failed to start speech recognition:', err);
+      if (active) {
+        setTimeout(() => {
+          if (active) {
+            setStatus('listening');
+            startListening();
+          }
+        }, 2000);
+      }
+    }
   }
 
   function start() {
     if (!SR) { toast('Voice calls need Chrome or Edge browser.'); return; }
     if (active) return;
     active = true;
+    S.call.active = true;
     showCallUI();
     toast('Call started — speak your question!', 3500);
     startListening();
@@ -1878,8 +2089,9 @@ const CallMode = (() => {
 
   function stop() {
     active = false;
-    try { if (rec) rec.stop(); } catch (_) {}
-    if (S.call.audio) { S.call.audio.pause(); S.call.audio = null; }
+    S.call.active = false;
+    stopMic();
+    VoiceSpeaker.stop();
     hideCallUI();
   }
 

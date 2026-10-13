@@ -21,7 +21,6 @@ load_dotenv()
 # Project utils (imported after load_dotenv so they pick up the key)
 from utils.language_detector import detect_language
 from utils.llm_response import get_answer
-from utils.text_to_speech import speak_async
 
 # ---------------------------------------------------------------------------
 # App Setup
@@ -67,7 +66,7 @@ class VoiceChatRequest(BaseModel):
 
 class VoiceChatResponse(BaseModel):
     reply: str
-    audio_url: str
+    audio_url: str = ""
     language: str
 
 # ---------------------------------------------------------------------------
@@ -227,8 +226,7 @@ async def voice_chat(request: VoiceChatRequest):
     Voice call mode endpoint.
     1. Detect language from transcribed text
     2. Call LLM (get_answer) with language param — runs in thread pool
-    3. Generate TTS with language-appropriate Edge TTS voice
-    4. Return reply text + audio URL + detected language
+    3. Return reply text + detected language (browser handles speech synthesis)
     """
     text = request.text.strip()
     if not text:
@@ -243,12 +241,9 @@ async def voice_chat(request: VoiceChatRequest):
         loop = asyncio.get_event_loop()
         reply = await loop.run_in_executor(None, get_answer, text, language)
 
-        # TTS — pick voice based on language
-        await speak_async(reply, language)
-
         return VoiceChatResponse(
             reply=reply,
-            audio_url="/audio/output.mp3",
+            audio_url="",
             language=language,
         )
 
@@ -264,12 +259,10 @@ async def voice_chat(request: VoiceChatRequest):
 
 @app.get("/health")
 async def health():
-    from utils.text_to_speech import VOICES
     return {
         "status": "ok",
         "model": MODEL,
         "api_key_set": bool(OPENROUTER_API_KEY),
-        "tts_voices": VOICES,
     }
 
 

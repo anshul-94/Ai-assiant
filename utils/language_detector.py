@@ -16,22 +16,22 @@ _HINDI_WORDS = {
     "kya", "kaise", "kaun", "kahan", "kab", "kyun", "kyunki",
     "kitna", "kitne", "kitni",
     # Verbs / helpers
-    "hai", "hain", "ho", "hoga", "hogi", "hona", "tha", "thi", "the",
+    "hai", "hain", "ho", "hoga", "hogi", "hona", "tha", "thi",
     "kar", "karo", "karna", "karte", "karta", "karti",
     "batao", "bolo", "sikho", "samjhao", "batana", "bolna",
     "chahiye", "milta", "milti",
     "padh", "parhna", "likhna", "suno", "sunao",
-    # Numbers in Hindi
-    "ek", "do", "teen", "char", "paanch", "chhe", "saat", "aath", "nau", "das",
+    # Numbers in Hindi (avoid English collision 'do')
+    "ek", "dono", "teen", "char", "paanch", "chhe", "saat", "aath", "nau", "das",
     # Postpositions / conjunctions
     "ka", "ki", "ke", "ko", "mein", "se", "par", "tak", "aur", "ya", "lekin",
     "nahi", "nahin", "mat", "na",
     # Pronouns
     "mera", "meri", "mere", "tera", "teri", "tere", "uska", "uski",
     "yeh", "woh", "hum", "tum", "aap", "main",
-    # Misc
+    # Misc (avoid English collision 'table' — covered by pattern 'ka table')
     "accha", "theek", "sahi", "samajh", "gaye", "seekh",
-    "table", "ginti", "sawaal", "jawab", "naam",
+    "ginti", "sawaal", "jawab", "naam",
 }
 
 _HINDI_PATTERNS = [

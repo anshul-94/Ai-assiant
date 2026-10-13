@@ -148,7 +148,8 @@ def get_answer(question: str, language: str = "english") -> str:
     Returns:
         Reply string (always Roman characters only).
     """
-    if not API_KEY:
+    api_key = os.getenv("OPENROUTER_API_KEY") or API_KEY
+    if not api_key:
         return "Sorry, I could not generate an answer. OPENROUTER_API_KEY is missing."
 
     system_prompt = _SYSTEM_HINGLISH if language == "hinglish" else _SYSTEM_ENGLISH
@@ -158,7 +159,7 @@ def get_answer(question: str, language: str = "english") -> str:
 
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
-        "Authorization": f"Bearer {API_KEY}",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
         "HTTP-Referer": "http://localhost",
         "X-Title": "StudyMate AI",
