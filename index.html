@@ -994,9 +994,15 @@
     }
 
     .vm-sub {
-      font-size: 13.5px;
+      font-size: 14px;
       color: var(--text-secondary);
-      margin-bottom: 40px;
+      margin-bottom: 32px;
+      max-width: 520px;
+      min-height: 42px;
+      line-height: 1.5;
+      text-align: center;
+      padding: 0 16px;
+      word-break: break-word;
     }
 
     /* Waveform bars */
@@ -1005,7 +1011,7 @@
       align-items: center;
       gap: 4px;
       height: 44px;
-      margin-bottom: 36px;
+      margin-bottom: 32px;
       opacity: 0;
       transition: opacity 0.3s ease;
     }
@@ -1037,6 +1043,28 @@
       50%      { transform: scaleY(1);  opacity: 1; }
     }
 
+    /* Voice overlay control actions */
+    .vm-actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 28px;
+    }
+
+    .vm-btn-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .vm-btn-label {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: .3px;
+    }
+
     /* End call button */
     #vm-end-btn {
       width: 60px;
@@ -1050,22 +1078,36 @@
       justify-content: center;
       box-shadow: 0 6px 20px rgba(239, 83, 80, 0.45);
       transition: transform 0.25s cubic-bezier(.34,1.56,.64,1), box-shadow 0.25s;
-      margin-bottom: 10px;
     }
 
     #vm-end-btn:hover {
-      transform: scale(1.1);
+      transform: scale(1.08);
       box-shadow: 0 10px 28px rgba(239, 83, 80, 0.6);
     }
 
     #vm-end-btn:active { transform: scale(.92); }
 
-    .vm-end-label {
-      font-size: 11.5px;
-      font-weight: 700;
-      color: var(--text-muted);
-      letter-spacing: .3px;
+    /* Manual Send / Done button */
+    #vm-done-btn {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 6px 20px rgba(76, 175, 80, 0.45);
+      transition: transform 0.25s cubic-bezier(.34,1.56,.64,1), box-shadow 0.25s;
     }
+
+    #vm-done-btn:hover {
+      transform: scale(1.08);
+      box-shadow: 0 10px 28px rgba(76, 175, 80, 0.6);
+    }
+
+    #vm-done-btn:active { transform: scale(.92); }
 
     /* ==========================================================
        12. SIDEBAR OVERLAY (mobile)
@@ -1392,14 +1434,27 @@
     <span></span>
   </div>
 
-  <!-- End call -->
-  <button id="vm-end-btn" aria-label="End call">
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <line x1="1" y1="1" x2="23" y2="23"/>
-      <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55M5 12.55a10.94 10.94 0 0 1 5.17-2.39M10.71 5.05A16 16 0 0 1 22.56 9M1.42 9a15.91 15.91 0 0 1 4.7-2.88M8.51 16.37A5.77 5.77 0 0 1 10.55 19"/>
-    </svg>
-  </button>
-  <div class="vm-end-label">End Call</div>
+  <!-- Actions: End Call and Send Now -->
+  <div class="vm-actions">
+    <div class="vm-btn-wrap">
+      <button id="vm-end-btn" aria-label="End call" title="End call">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="1" y1="1" x2="23" y2="23"/>
+          <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55M5 12.55a10.94 10.94 0 0 1 5.17-2.39M10.71 5.05A16 16 0 0 1 22.56 9M1.42 9a15.91 15.91 0 0 1 4.7-2.88M8.51 16.37A5.77 5.77 0 0 1 10.55 19"/>
+        </svg>
+      </button>
+      <div class="vm-btn-label">End Call</div>
+    </div>
+    <div class="vm-btn-wrap">
+      <button id="vm-done-btn" aria-label="Send question immediately" title="Send now without waiting for silence">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"/>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
+      <div class="vm-btn-label">Send Now</div>
+    </div>
+  </div>
 
 </div>
 
@@ -1653,9 +1708,22 @@ function toggleSend() {
 
 D.input.addEventListener('input', () => { resizeTextarea(); toggleSend(); });
 D.input.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendText(D.input.value); }
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    if (S.call.active && typeof CallMode !== 'undefined') {
+      CallMode.commitQuestion('manual');
+    } else {
+      sendText(D.input.value);
+    }
+  }
 });
-D.send.addEventListener('click', () => sendText(D.input.value));
+D.send.addEventListener('click', () => {
+  if (S.call.active && typeof CallMode !== 'undefined') {
+    CallMode.commitQuestion('manual');
+  } else {
+    sendText(D.input.value);
+  }
+});
 
 /* ─── SUGGESTION CARDS ───────────────────────────────── */
 document.querySelectorAll('.sg-card').forEach(card =>
@@ -1874,31 +1942,79 @@ const VoiceSpeaker = (() => {
 /* ─── CALL MODE ──────────────────────────────────────── */
 const CallMode = (() => {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  // State Machine: 'idle' | 'listening' | 'processing' | 'speaking'
+  let state = 'idle';
   let active = false;
   let rec = null;
 
-  const overlay    = $('voice-overlay');
+  // Transcript accumulation across continuous segments & session restarts
+  let currentUtterancePrefix = ''; // Finalized segments from earlier recognition restarts in current turn
+  let sessionFinal = '';           // Finalized segments in current recognition session
+  let sessionInterim = '';         // Current unfinalized interim speech
+  let silenceTimer = null;
+  let isSubmitting = false;
+
+  const SILENCE_TIMEOUT_MS = 1800; // 1.8 seconds silence timeout
+
+  const overlay     = $('voice-overlay');
   const vmStatusTxt = $('vm-status-txt');
-  const vmSubTxt   = $('vm-sub-txt');
-  const vmEndBtn   = $('vm-end-btn');
-  const inputArea  = $('input-area');
+  const vmSubTxt    = $('vm-sub-txt');
+  const vmEndBtn    = $('vm-end-btn');
+  const vmDoneBtn   = $('vm-done-btn');
+  const inputArea   = $('input-area');
 
-  vmEndBtn.addEventListener('click', () => { stop(); toast('Call ended.'); });
+  if (vmEndBtn) {
+    vmEndBtn.addEventListener('click', () => { stop(); toast('Call ended.'); });
+  }
 
-  function setStatus(state) {
+  if (vmDoneBtn) {
+    vmDoneBtn.addEventListener('click', () => {
+      commitQuestion('manual');
+    });
+  }
+
+  function getLiveTranscript() {
+    return [currentUtterancePrefix, sessionFinal, sessionInterim]
+      .filter(Boolean)
+      .join(' ')
+      .trim();
+  }
+
+  function getDisplaySubtitle() {
+    const live = getLiveTranscript();
+    if (live) return `“${live}”`;
+    return 'Speak your question (pause or click Send Now when done)';
+  }
+
+  function setStatus(newState) {
+    state = newState;
     overlay.className = state === 'idle' ? '' : state;
     if (state !== 'idle') overlay.classList.add('open');
 
     const cfg = {
-      listening:  { main: 'Listening...',            sub: 'Speak your question' },
-      processing: { main: 'Thinking...',              sub: 'Generating your answer' },
+      listening:  { main: 'Listening...',               sub: getDisplaySubtitle() },
+      processing: { main: 'Thinking...',                sub: 'Generating your answer' },
       speaking:   { main: 'StudyMate AI is speaking...', sub: 'Voice response playing' },
     };
     const c = cfg[state];
-    if (c && vmStatusTxt) { vmStatusTxt.textContent = c.main; vmSubTxt.textContent = c.sub; }
+    if (c && vmStatusTxt) {
+      vmStatusTxt.textContent = c.main;
+      vmSubTxt.textContent = c.sub;
+    }
     if (D.callStatus && D.callTxt) {
       D.callStatus.style.display = state === 'idle' ? 'none' : 'flex';
-      if (state !== 'idle') { D.callStatus.className = state; D.callTxt.textContent = c ? c.main : state; }
+      if (state !== 'idle') {
+        D.callStatus.className = state;
+        D.callTxt.textContent = c ? c.main : state;
+      }
+    }
+  }
+
+  function clearSilenceTimer() {
+    if (silenceTimer) {
+      clearTimeout(silenceTimer);
+      silenceTimer = null;
     }
   }
 
@@ -1920,6 +2036,9 @@ const CallMode = (() => {
   function stopMic() {
     if (rec) {
       try {
+        rec.onresult = null;
+        rec.onerror = null;
+        rec.onend = null;
         if (typeof rec.abort === 'function') rec.abort();
         else rec.stop();
       } catch (_) {}
@@ -1927,16 +2046,48 @@ const CallMode = (() => {
     }
   }
 
-  async function processUtterance(spokenText) {
-    if (!spokenText.trim() || !active) return;
+  function commitQuestion(reason = 'silence') {
+    if (state !== 'listening' || !active || isSubmitting) return;
 
-    if (/^(bye|stop|exit|goodbye|end call|band karo)$/i.test(spokenText.trim())) {
-      stop(); toast('Goodbye! Call ended.'); return;
+    clearSilenceTimer();
+
+    const finalQuestion = getLiveTranscript();
+    if (!finalQuestion) {
+      if (reason === 'manual') toast('Please speak your question first.');
+      return;
     }
 
-    // Stop mic while generating answer and speaking
+    // Mark submitting to block duplicate requests
+    isSubmitting = true;
+    currentUtterancePrefix = '';
+    sessionFinal = '';
+    sessionInterim = '';
+
+    // Stop mic recognition immediately so it never transcribes its own output
     stopMic();
+
+    // Clear live preview in textarea
+    D.input.value = '';
+    resizeTextarea();
+    toggleSend();
+
+    // Transition state machine: LISTENING -> PROCESSING
     setStatus('processing');
+
+    processUtterance(finalQuestion);
+  }
+
+  async function processUtterance(spokenText) {
+    if (!spokenText.trim() || !active) {
+      isSubmitting = false;
+      return;
+    }
+
+    if (/^(bye|stop|exit|goodbye|end call|band karo)$/i.test(spokenText.trim())) {
+      stop();
+      toast('Goodbye! Call ended.');
+      return;
+    }
 
     let sess = getSession() ?? newSession();
     if (!sess.messages.length) {
@@ -1953,7 +2104,10 @@ const CallMode = (() => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: spokenText }),
       });
-      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || `HTTP ${res.status}`); }
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        throw new Error(e.detail || `HTTP ${res.status}`);
+      }
 
       const data = await res.json();
       const reply = data.reply || 'I heard you, but could not formulate a response.';
@@ -1964,14 +2118,19 @@ const CallMode = (() => {
       appendMsg('bot', reply, bt, true);
 
       // Check if call was ended while request was in-flight
-      if (!active) return;
+      if (!active) {
+        isSubmitting = false;
+        return;
+      }
 
+      // Transition state machine: PROCESSING -> SPEAKING
       setStatus('speaking');
 
       if (!VoiceSpeaker.isSupported) {
         toast('Voice speech is not supported in this browser.');
         setTimeout(() => {
           if (active) {
+            isSubmitting = false;
             setStatus('listening');
             startListening();
           }
@@ -1985,12 +2144,15 @@ const CallMode = (() => {
         // onEnd:
         () => {
           if (!active) return;
+          isSubmitting = false;
+          // Transition state machine: SPEAKING -> LISTENING
           setStatus('listening');
           startListening();
         },
         // onError:
         (err) => {
           if (!active) return;
+          isSubmitting = false;
           if (err && (err.error === 'canceled' || err.error === 'interrupted')) {
             return;
           }
@@ -2002,6 +2164,7 @@ const CallMode = (() => {
       );
 
     } catch (err) {
+      isSubmitting = false;
       const bt = now();
       const msg = `Voice chat error: ${err.message}`;
       sess.messages.push({ role: 'bot', content: msg, time: bt });
@@ -2021,66 +2184,111 @@ const CallMode = (() => {
   }
 
   function startListening() {
-    if (!active || !SR) return;
+    if (!active || !SR || state !== 'listening' || isSubmitting) return;
     stopMic();
 
     try {
       rec = new SR();
-      rec.continuous = false;
-      rec.interimResults = false;
+      rec.continuous = true;
+      rec.interimResults = true;
       rec.lang = 'en-IN';
 
+      sessionFinal = '';
+      sessionInterim = '';
+
       rec.onresult = e => {
-        const transcript = e.results && e.results[0] && e.results[0][0] ? e.results[0][0].transcript : '';
-        stopMic();
-        if (transcript) {
-          processUtterance(transcript);
-        } else if (active) {
-          setStatus('listening');
-          startListening();
+        if (state !== 'listening' || !active || isSubmitting) return;
+
+        let curFinal = '';
+        let curInterim = '';
+
+        for (let i = 0; i < e.results.length; ++i) {
+          const res = e.results[i];
+          const text = res[0] ? res[0].transcript : '';
+          if (res.isFinal) {
+            curFinal += (curFinal ? ' ' : '') + text.trim();
+          } else {
+            curInterim += (curInterim ? ' ' : '') + text.trim();
+          }
+        }
+
+        sessionFinal = curFinal;
+        sessionInterim = curInterim;
+
+        const liveText = getLiveTranscript();
+        if (liveText) {
+          // Display live transcript in the input area and in the overlay subtitle
+          D.input.value = liveText;
+          resizeTextarea();
+          toggleSend();
+          if (vmSubTxt) {
+            vmSubTxt.textContent = `“${liveText}”`;
+          }
+
+          // Reset silence timer: user is speaking
+          clearSilenceTimer();
+          silenceTimer = setTimeout(() => {
+            commitQuestion('silence');
+          }, SILENCE_TIMEOUT_MS);
         }
       };
 
       rec.onerror = e => {
         if (!active) return;
         if (e.error === 'no-speech') {
-          // Normal timeout when no speech is detected; simply re-arm listening
-          setStatus('listening');
-          startListening();
+          // Normal timeout when no speech is detected; keep accumulated text
+          return;
         } else if (e.error === 'aborted') {
-          // Stopped programmatically; ignore
+          // Normal when aborted programmatically
+          return;
         } else if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
           toast('Microphone access denied. Call ended.');
           stop();
         } else {
           toast('Mic notice: ' + e.error);
-          setTimeout(() => {
-            if (active) {
-              setStatus('listening');
-              startListening();
-            }
-          }, 2000);
         }
+      };
+
+      rec.onend = () => {
+        if (!active || state !== 'listening' || isSubmitting) return;
+
+        // Save finalized segments from this session so they aren't lost on restart
+        if (sessionFinal) {
+          currentUtterancePrefix = [currentUtterancePrefix, sessionFinal].filter(Boolean).join(' ').trim();
+          sessionFinal = '';
+        }
+        sessionInterim = '';
+
+        // Restart recognition stream to keep listening until silence timer triggers or user clicks Done
+        try {
+          if (active && state === 'listening' && !isSubmitting) {
+            rec.start();
+          }
+        } catch (_) {}
       };
 
       rec.start();
     } catch (err) {
       console.warn('Failed to start speech recognition:', err);
-      if (active) {
+      if (active && state === 'listening' && !isSubmitting) {
         setTimeout(() => {
-          if (active) {
-            setStatus('listening');
+          if (active && state === 'listening') {
             startListening();
           }
-        }, 2000);
+        }, 1500);
       }
     }
   }
 
   function start() {
-    if (!SR) { toast('Voice calls need Chrome or Edge browser.'); return; }
+    if (!SR) { toast('Voice calls require Chrome, Edge, or a browser with SpeechRecognition support.'); return; }
     if (active) return;
     active = true;
+    isSubmitting = false;
+    currentUtterancePrefix = '';
+    sessionFinal = '';
+    sessionInterim = '';
+    clearSilenceTimer();
     S.call.active = true;
     showCallUI();
     toast('Call started — speak your question!', 3500);
@@ -2089,13 +2297,19 @@ const CallMode = (() => {
 
   function stop() {
     active = false;
+    isSubmitting = false;
+    state = 'idle';
+    currentUtterancePrefix = '';
+    sessionFinal = '';
+    sessionInterim = '';
+    clearSilenceTimer();
     S.call.active = false;
     stopMic();
     VoiceSpeaker.stop();
     hideCallUI();
   }
 
-  return { start, stop };
+  return { start, stop, commitQuestion };
 })();
 
 D.startCall.addEventListener('click', () => CallMode.start());
